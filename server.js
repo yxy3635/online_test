@@ -11,25 +11,19 @@ const mammoth = require('mammoth'); // 用于 AI 接口提取文本
 const app = express();
 const port = 3000;
 
-// 中间件
 app.use(cors());
-// 增加 JSON 请求体大小限制到 50MB，支持大 JSON 文件导入
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(express.static('public')); 
-app.use('/uploads', express.static('uploads')); // 允许访问uploads目录
+app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
 
-// Multer 配置 - 用于背景图片上传（保存到磁盘）
 const backgroundStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-        // 使用用户提供的名称，如果没有则使用原始文件名
         const customName = req.body.name || file.originalname;
-        // 确保文件名安全（移除特殊字符）
         const safeName = customName.replace(/[^a-zA-Z0-9._-]/g, '_');
-        // 保持文件扩展名
         const ext = path.extname(file.originalname);
         const nameWithoutExt = path.basename(safeName, ext);
         cb(null, nameWithoutExt + ext);
@@ -38,7 +32,6 @@ const backgroundStorage = multer.diskStorage({
 const backgroundUpload = multer({ 
     storage: backgroundStorage,
     fileFilter: (req, file, cb) => {
-        // 只允许图片文件
         const allowedTypes = /jpeg|jpg|png|gif|webp/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
@@ -48,24 +41,20 @@ const backgroundUpload = multer({
             cb(new Error('只支持图片格式：jpeg, jpg, png, gif, webp'));
         }
     },
-    limits: { fileSize: 64 * 1024 * 1024 } // 限制64MB
+    limits: { fileSize: 64 * 1024 * 1024 }
 });
 
-// Multer 配置 - 用于文档上传（内存存储）
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// 初始化数据库
 initDB();
 
-// 确保 uploads 目录存在
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
     console.log('已创建 uploads 目录:', uploadsDir);
 } else {
     console.log('uploads 目录已存在:', uploadsDir);
-    // 列出目录中的文件
     try {
         const files = fs.readdirSync(uploadsDir);
         console.log('uploads 目录中的文件:', files);
@@ -115,9 +104,6 @@ async function saveExamToDB(subject, uploader, questions) {
         const examId = examResult.insertId;
 
         // 2. 插入 questions 表
-        // 注意：explanation 字段如果数据库没有，会自动忽略吗？不会，会报错。
-        // 为了兼容旧数据库，这里先假设 explanation 字段已存在（之前的 lib/db.js 修改已包含）
-        // 如果没有，需要确保 lib/db.js 里的自动迁移逻辑生效。
         const questionSql = `
             INSERT INTO questions (exam_id, title, options, answer, explanation, type) 
             VALUES (?, ?, ?, ?, ?, ?)
@@ -129,7 +115,7 @@ async function saveExamToDB(subject, uploader, questions) {
                 q.title, 
                 JSON.stringify(q.options || []),
                 q.answer,
-                q.explanation || '', // 如果解析器没返回 explanation，这里存空字符串
+                q.explanation || '',
                 q.type || '未知'
             ]);
         }
@@ -190,30 +176,25 @@ app.post('/api/upload/ai', upload.single('file'), async (req, res) => {
     const uploader = req.body.uploader || '匿名';
     const subject = req.body.subject || '未命名科目';
 
-    // 辅助函数：发送进度数据
     const sendProgress = (percent, message) => {
         const data = JSON.stringify({ type: 'progress', percent, message });
-        res.write(data + '\n'); // 换行符作为分隔
+        res.write(data + '\n');
     };
 
     try {
         console.log(`[AI 模式] 处理上传: [${subject}] by ${uploader}`);
         sendProgress(0, '正在提取文档文本...');
         
-        // 1. 提取文本
         const rawResult = await mammoth.extractRawText({ buffer: req.file.buffer });
         let fullText = rawResult.value;
 
-        // 简单清洗
         if (!fullText) {
              throw new Error('文档内容为空');
         }
         
         sendProgress(10, `文本提取成功 (${fullText.length} 字符)，准备 AI 深度解析...`);
 
-        // 2. 直接调用 AI 深度解析 (传入纯文本，不再依赖正则预处理)
         const questions = await parseWithAI(fullText, (percent, msg) => {
-            // 进度映射：10% ~ 95%
             const mappedPercent = 10 + Math.round(percent * 0.85);
             sendProgress(mappedPercent, msg);
         });
@@ -225,18 +206,16 @@ app.post('/api/upload/ai', upload.single('file'), async (req, res) => {
         if (!result.success) {
             res.write(JSON.stringify({ type: 'error', message: result.message }));
         } else {
-            // 发送最终成功结果，并强制换行确保前端能读到
-            res.write(JSON.stringify({ 
-                type: 'complete', 
-                message: '上传处理完成', 
-                examId: result.examId, 
-                count: result.count 
+            res.write(JSON.stringify({
+                type: 'complete',
+                message: '上传处理完成',
+                examId: result.examId,
+                count: result.count
             }) + '\n');
         }
 
     } catch (error) {
         console.error('AI 上传失败:', error);
-        // 捕获所有未处理的异常，确保前端能收到错误提示
         res.write(JSON.stringify({ type: 'error', message: '服务器内部错误: ' + error.message }) + '\n');
     } finally {
         res.end();
@@ -250,8 +229,6 @@ app.post('/api/upload/ai', upload.single('file'), async (req, res) => {
 app.get('/api/questions', async (req, res) => {
     const examId = req.query.exam_id;
 
-    // 如果没有传 exam_id，为了兼容性，可以返回空或者所有（建议强制传）
-    // 这里改为：如果不传 ID，返回空数据，防止一次拉取太多
     if (!examId) {
         return res.json({ count: 0, data: [], message: "请提供 exam_id 参数" });
     }
@@ -283,7 +260,6 @@ app.post('/api/upload/json', async (req, res) => {
     const subject = req.body?.subject || '未命名科目';
     const incoming = req.body?.questions ?? req.body;
 
-    // 兼容两种格式：直接数组 或 { questions: [] }
     const questions = Array.isArray(incoming) ? incoming : (incoming?.questions || []);
 
     if (!Array.isArray(questions)) {
@@ -294,7 +270,6 @@ app.post('/api/upload/json', async (req, res) => {
     }
 
     try {
-        // 轻量规范化：保证字段齐全、options 为数组
         const normalized = questions.map(q => ({
             title: String(q?.title ?? '').trim(),
             type: q?.type || '未知',
@@ -303,7 +278,6 @@ app.post('/api/upload/json', async (req, res) => {
             explanation: q?.explanation ?? ''
         }));
 
-        // 简单校验：题干不能为空
         const invalidIndex = normalized.findIndex(q => !q.title);
         if (invalidIndex !== -1) {
             return res.status(400).json({ error: `第 ${invalidIndex + 1} 题缺少 title（题干）` });
@@ -328,7 +302,6 @@ app.post('/api/ask-ai', async (req, res) => {
     if (!question) return res.status(400).json({ error: '缺少题目数据' });
 
     try {
-        // 构造包含 userAnswer 的完整对象传给 AI 解析器
         const reply = await askAIForExplanation({ ...question, userAnswer });
         res.json({ reply });
     } catch (error) {
@@ -360,24 +333,21 @@ app.get('/api/backgrounds', (req, res) => {
     try {
         const uploadsDirPath = path.join(__dirname, 'uploads');
         console.log('[背景列表API] 读取背景目录:', uploadsDirPath);
-        
-        // 检查目录是否存在
+
         if (!fs.existsSync(uploadsDirPath)) {
             console.error('[背景列表API] uploads目录不存在:', uploadsDirPath);
             return res.json({ data: [] });
         }
-        
+
         const files = fs.readdirSync(uploadsDirPath);
         console.log('[背景列表API] 目录中的所有文件:', files);
-        
-        // 过滤出图片文件
+
         const imageFiles = files.filter(file => {
             const ext = path.extname(file).toLowerCase();
             const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
             if (!isImage) {
                 console.log(`[背景列表API] 跳过非图片文件: ${file} (扩展名: ${ext})`);
             } else {
-                // 检查文件是否真的存在
                 const filePath = path.join(uploadsDirPath, file);
                 if (!fs.existsSync(filePath)) {
                     console.warn(`[背景列表API] 文件不存在: ${filePath}`);
