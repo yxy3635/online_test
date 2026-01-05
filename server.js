@@ -3,13 +3,32 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const child_process = require('child_process');
 const { parseWordToQuestions } = require('./lib/wordParser');
-const { parseWithAI, askAIForExplanation } = require('./lib/aiParser'); // 引入 AI 解析器
+const { parseWithAI, askAIForExplanation } = require('./lib/aiParser');  
 const { pool, initDB } = require('./lib/db');
-const mammoth = require('mammoth'); // 用于 AI 接口提取文本
+const mammoth = require('mammoth');  
 
 const app = express();
 const port = 3000;
+
+const onlineUsers = new Map();  
+const HEARTBEAT_INTERVAL = 5000;  
+const USER_TIMEOUT = 15000;  
+
+setInterval(async () => {
+    const now = Date.now();
+    let activeCount = 0;
+    for (const [id, lastTime] of onlineUsers.entries()) {
+        if (now - lastTime > USER_TIMEOUT) {
+            onlineUsers.delete(id);
+        } else {
+            activeCount++;
+        }
+    }
+    
+}, HEARTBEAT_INTERVAL);
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -63,10 +82,161 @@ if (!fs.existsSync(uploadsDir)) {
     }
 }
 
-/**
- * API: 获取所有试卷列表 (用于首页展示)
- * 返回：[{ id, subject_name, uploader_name, question_count, created_at }, ...]
- */
+app.post('/api/heartbeat', (req, res) => {
+    const userId = req.body.userId || req.ip;
+    onlineUsers.set(userId, Date.now());
+    res.json({ success: true });
+});
+
+app.get('/api/stats', async (req, res) => {
+    try {
+        const [statsRows] = await pool.query('SELECT total_usage_seconds FROM system_stats WHERE id = 1');
+        const [questionRows] = await pool.query('SELECT COUNT(*) as count FROM questions');
+
+        const readText = (p) => {
+            try { return fs.readFileSync(p, 'utf8').trim(); } catch { return null; }
+        };
+
+        const fmtGB1 = (bytesBig) => {
+            try {
+                const bytes = BigInt(bytesBig);
+                if (bytes <= 0n) return '0.0';
+                const tenths = (bytes * 10n) / 1073741824n; // 1024^3
+                const i = tenths / 10n;
+                const d = tenths % 10n;
+                return `${i}.${d}`;
+            } catch {
+                return '0.0';
+            }
+        };
+
+        const fmtPct1 = (usedBig, totalBig) => {
+            try {
+                const used = BigInt(usedBig);
+                const total = BigInt(totalBig);
+                if (total <= 0n) return '0.0';
+                const tenths = (used * 1000n) / total;  
+                const i = tenths / 10n;
+                const d = tenths % 10n;
+                return `${i}.${d}`;
+            } catch {
+                return '0.0';
+            }
+        };
+
+        const getCgroupMemory = () => {
+            if (process.platform !== 'linux') return null;
+
+            if (fs.existsSync('/sys/fs/cgroup/cgroup.controllers')) {
+                const maxStr = readText('/sys/fs/cgroup/memory.max');
+                const curStr = readText('/sys/fs/cgroup/memory.current');
+                if (maxStr && curStr && maxStr !== 'max') {
+                    try { return { totalBytes: BigInt(maxStr), usedBytes: BigInt(curStr) }; } catch {}
+                }
+            }
+
+            const limStr = readText('/sys/fs/cgroup/memory/memory.limit_in_bytes');
+            const useStr = readText('/sys/fs/cgroup/memory/memory.usage_in_bytes');
+            if (limStr && useStr) {
+                try {
+                    const total = BigInt(limStr);
+                    const used = BigInt(useStr);
+                    const osTotal = BigInt(os.totalmem());
+                    if (total > osTotal * 2n) return null;
+                    return { totalBytes: total, usedBytes: used };
+                } catch {}
+            }
+
+            return null;
+        };
+
+        const memFromCgroup = getCgroupMemory();
+        const memTotalBytes = memFromCgroup ? memFromCgroup.totalBytes : BigInt(os.totalmem());
+        const memUsedBytes = memFromCgroup ? memFromCgroup.usedBytes : (BigInt(os.totalmem()) - BigInt(os.freemem()));
+
+        const getDiskBytes = () => {
+            if (typeof fs.statfsSync === 'function') {
+                try {
+                    let st;
+                    try { st = fs.statfsSync('.'); } catch { st = fs.statfsSync('/'); }
+                    const bSize = BigInt(st.frsize || st.bsize || 4096);
+                    const blocks = BigInt(st.blocks || 0);
+                    const bavail = BigInt(st.bavail || st.bfree || 0);
+                    return { totalBytes: blocks * bSize, freeBytes: bavail * bSize };
+                } catch {}
+            }
+
+            if (process.platform === 'linux') {
+                try {
+                    const out = child_process.execSync('df -kP /', { encoding: 'utf8' }).trim().split('\n');
+                    if (out.length >= 2) {
+                        const parts = out[1].replace(/\s+/g, ' ').split(' ');
+                        const totalKB = BigInt(parts[1] || '0');
+                        const availKB = BigInt(parts[3] || '0');
+                        return { totalBytes: totalKB * 1024n, freeBytes: availKB * 1024n };
+                    }
+                } catch {}
+            }
+
+            return { totalBytes: 0n, freeBytes: 0n };
+        };
+
+        const disk = getDiskBytes();
+        const diskTotalBytes = disk.totalBytes;
+        const diskFreeBytes = disk.freeBytes;
+        const diskUsedBytes = diskTotalBytes > 0n ? (diskTotalBytes - diskFreeBytes) : 0n;
+
+        const storageInfo = {
+            total: fmtGB1(diskTotalBytes),
+            free: fmtGB1(diskFreeBytes),
+            usage: fmtPct1(diskUsedBytes, diskTotalBytes)
+        };
+        
+        const [uploaderRows] = await pool.query(`
+            SELECT uploader_name, COUNT(*) as exam_count 
+            FROM exams 
+            WHERE uploader_name IS NOT NULL AND TRIM(uploader_name) != '' AND uploader_name != '匿名'
+            GROUP BY uploader_name 
+            ORDER BY exam_count DESC 
+            LIMIT 1
+        `);
+        
+        let topUploader = uploaderRows[0];
+        
+        if (!topUploader) {
+            const [allRows] = await pool.query(`
+                SELECT uploader_name, COUNT(*) as exam_count 
+                FROM exams 
+                GROUP BY uploader_name 
+                ORDER BY exam_count DESC 
+                LIMIT 1
+            `);
+            topUploader = allRows[0] || { uploader_name: '系统', exam_count: 0 };
+        }
+
+        res.json({
+            totalUsageSeconds: statsRows[0]?.total_usage_seconds || 0,
+            totalQuestions: questionRows[0]?.count || 0,
+            onlineUsers: onlineUsers.size,
+            topUploader: {
+                uploader_name: topUploader.uploader_name || '未知贡献者',
+                exam_count: topUploader.exam_count || 0
+            },
+            serverInfo: {
+                memory: {
+                    total: fmtGB1(memTotalBytes),
+                    usage: fmtPct1(memUsedBytes, memTotalBytes)
+                },
+                storage: storageInfo,
+                region: process.env.SERVER_REGION || '中国 · 成都'
+            }
+        });
+    } catch (error) {
+        console.error('获取统计数据失败:', error);
+        res.status(500).json({ error: '获取统计数据失败' });
+    }
+});
+
 app.get('/api/exams', async (req, res) => {
     try {
         const sql = `
@@ -77,16 +247,18 @@ app.get('/api/exams', async (req, res) => {
             ORDER BY e.created_at DESC
         `;
         const [rows] = await pool.query(sql);
-        res.json({ data: rows });
+        const formattedRows = rows.map(row => ({
+            ...row,
+            rate: row.rate !== null && row.rate !== undefined ? parseFloat(row.rate) : 5.0,
+            ratenums: row.ratenums !== null && row.ratenums !== undefined ? parseInt(row.ratenums) : 0
+        }));
+        res.json({ data: formattedRows });
     } catch (error) {
         console.error('获取试卷列表失败:', error);
         res.status(500).json({ error: '数据库查询失败' });
     }
 });
 
-/**
- * 通用入库逻辑
- */
 async function saveExamToDB(subject, uploader, questions) {
     if (questions.length === 0) {
         return { success: false, message: '未识别到有效题目' };
@@ -96,14 +268,12 @@ async function saveExamToDB(subject, uploader, questions) {
     try {
         await connection.beginTransaction();
 
-        // 1. 插入 exams 表
         const [examResult] = await connection.query(
             'INSERT INTO exams (subject_name, uploader_name) VALUES (?, ?)',
             [subject, uploader]
         );
         const examId = examResult.insertId;
 
-        // 2. 插入 questions 表
         const questionSql = `
             INSERT INTO questions (exam_id, title, options, answer, explanation, type) 
             VALUES (?, ?, ?, ?, ?, ?)
@@ -132,9 +302,6 @@ async function saveExamToDB(subject, uploader, questions) {
     }
 }
 
-/**
- * API: 普通上传 (正则解析)
- */
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: '请上传文件' });
     if (!req.file.originalname.endsWith('.docx')) return res.status(400).json({ error: '仅支持 .docx 格式' });
@@ -145,10 +312,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     try {
         console.log(`[正则模式] 处理上传: [${subject}] by ${uploader}`);
         
-        // 解析 Word
         const questions = await parseWordToQuestions(req.file.buffer);
         
-        // 入库
         const result = await saveExamToDB(subject, uploader, questions);
         if (!result.success) return res.json({ message: result.message, count: 0 });
 
@@ -160,11 +325,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     }
 });
 
-/**
- * API: AI 上传 (AI 解析) - 支持流式进度返回
- */
 app.post('/api/upload/ai', upload.single('file'), async (req, res) => {
-    // 设置流式响应头
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Transfer-Encoding', 'chunked');
 
@@ -199,7 +360,6 @@ app.post('/api/upload/ai', upload.single('file'), async (req, res) => {
             sendProgress(mappedPercent, msg);
         });
         
-        // 3. 入库
         sendProgress(95, 'AI 解析完成，正在写入数据库...');
         const result = await saveExamToDB(subject, uploader, questions);
         
@@ -222,10 +382,6 @@ app.post('/api/upload/ai', upload.single('file'), async (req, res) => {
     }
 });
 
-/**
- * API: 获取题目
- * 参数: ?exam_id=123 (必填)
- */
 app.get('/api/questions', async (req, res) => {
     const examId = req.query.exam_id;
 
@@ -251,10 +407,6 @@ app.get('/api/questions', async (req, res) => {
     }
 });
 
-/**
- * API: 直接 JSON 导入
- * body: { uploader: string, subject: string, questions: Array | {questions:Array} }
- */
 app.post('/api/upload/json', async (req, res) => {
     const uploader = req.body?.uploader || '匿名';
     const subject = req.body?.subject || '未命名科目';
@@ -293,9 +445,6 @@ app.post('/api/upload/json', async (req, res) => {
     }
 });
 
-/**
- * API: 问 AI 解析
- */
 app.post('/api/ask-ai', async (req, res) => {
     const { question, userAnswer } = req.body;
     
@@ -310,9 +459,6 @@ app.post('/api/ask-ai', async (req, res) => {
     }
 });
 
-/**
- * API: 上传背景图片
- */
 app.post('/api/upload/background', backgroundUpload.single('background'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: '请上传图片文件' });
@@ -326,9 +472,75 @@ app.post('/api/upload/background', backgroundUpload.single('background'), (req, 
     });
 });
 
-/**
- * API: 获取可用背景图片列表
- */
+app.post('/api/exam/rate', async (req, res) => {
+    try {
+        const { exam_id, rating, user_token } = req.body;
+
+        if (!exam_id || !rating || !user_token) {
+            return res.status(400).json({ error: '缺少必要参数：exam_id、rating 和 user_token' });
+        }
+
+        const ratingNum = parseFloat(rating);
+        if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+            return res.status(400).json({ error: '评分必须在 1-5 之间' });
+        }
+
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            const [examRows] = await connection.query('SELECT id, rate, ratenums FROM exams WHERE id = ?', [exam_id]);
+            
+            if (examRows.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({ error: '试卷不存在' });
+            }
+
+            const oldRate = examRows[0].rate !== null && examRows[0].rate !== undefined ? parseFloat(examRows[0].rate) : 5.0;
+            const oldNums = examRows[0].ratenums !== null && examRows[0].ratenums !== undefined ? parseInt(examRows[0].ratenums) : 0;
+
+            const newNums = oldNums + 1;
+            const newRate = ((oldRate * oldNums) + ratingNum) / newNums;
+            const roundedAvg = Math.round(newRate * 10) / 10;
+
+            try {
+                await connection.query(
+                    'UPDATE exams SET rate = ?, ratenums = ? WHERE id = ?',
+                    [roundedAvg, newNums, exam_id]
+                );
+            } catch (e) {
+                if (e.message.includes("Unknown column 'ratenums'")) {
+                    await connection.query(
+                        'UPDATE exams SET rate = ? WHERE id = ?',
+                        [roundedAvg, exam_id]
+                    );
+                    console.warn('ratenums字段不存在，只更新了rate字段。请重启服务器以初始化数据库字段。');
+                } else {
+                    throw e;
+                }
+            }
+
+            await connection.commit();
+
+            res.json({
+                success: true,
+                rate: roundedAvg,
+                count: newNums
+            });
+
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
+        }
+
+    } catch (error) {
+        console.error('提交评分失败:', error);
+        res.status(500).json({ error: '提交评分失败: ' + error.message });
+    }
+});
+
 app.get('/api/backgrounds', (req, res) => {
     try {
         const uploadsDirPath = path.join(__dirname, 'uploads');
@@ -358,21 +570,36 @@ app.get('/api/backgrounds', (req, res) => {
         });
         
         console.log('[背景列表API] 过滤后的图片文件:', imageFiles);
+
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 20;
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+
+        const paginatedFiles = imageFiles.slice(startIndex, endIndex);
         
-        const backgrounds = imageFiles.map(file => ({
+        const backgrounds = paginatedFiles.map(file => ({
             name: file,
             url: `/uploads/${file}`
         }));
+
+        const total = imageFiles.length;
+        const hasMore = endIndex < total;
         
-        console.log('[背景列表API] 返回的背景列表:', backgrounds);
-        res.json({ data: backgrounds });
+        console.log(`[背景列表API] 返回第 ${page} 页，共 ${total} 个背景，本页 ${backgrounds.length} 个`);
+        res.json({ 
+            data: backgrounds,
+            total: total,
+            page: page,
+            pageSize: pageSize,
+            hasMore: hasMore
+        });
     } catch (error) {
         console.error('[背景列表API] 获取背景列表失败:', error);
         res.status(500).json({ error: '获取背景列表失败: ' + error.message });
     }
 });
 
-// 启动服务器
 app.listen(port, () => {
     console.log(`在线答题系统已启动: http://localhost:${port}`);
 });
