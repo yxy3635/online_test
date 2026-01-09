@@ -302,6 +302,28 @@ async function saveExamToDB(subject, uploader, questions) {
     }
 }
 
+// 预览接口（只解析不保存）
+app.post('/api/upload/preview', upload.single('file'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: '请上传文件' });
+    if (!req.file.originalname.endsWith('.docx')) return res.status(400).json({ error: '仅支持 .docx 格式' });
+
+    try {
+        console.log(`[预览模式] 解析文件...`);
+        
+        const questions = await parseWordToQuestions(req.file.buffer);
+        
+        res.json({ 
+            success: true,
+            count: questions.length, 
+            questions: questions 
+        });
+
+    } catch (error) {
+        console.error('预览解析失败:', error);
+        res.status(500).json({ error: '处理失败', details: error.message });
+    }
+});
+
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: '请上传文件' });
     if (!req.file.originalname.endsWith('.docx')) return res.status(400).json({ error: '仅支持 .docx 格式' });
@@ -322,6 +344,55 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     } catch (error) {
         console.error('正则上传失败:', error);
         res.status(500).json({ error: '处理失败', details: error.message });
+    }
+});
+
+// AI预览接口（只解析不保存）
+app.post('/api/upload/ai/preview', upload.single('file'), async (req, res) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    if (!req.file) {
+        res.write(JSON.stringify({ error: '请上传文件' }));
+        return res.end();
+    }
+
+    const sendProgress = (percent, message) => {
+        const data = JSON.stringify({ type: 'progress', percent, message });
+        res.write(data + '\n');
+    };
+
+    try {
+        console.log(`[AI 预览模式] 解析文件...`);
+        sendProgress(0, '正在提取文档文本...');
+        
+        const rawResult = await mammoth.extractRawText({ buffer: req.file.buffer });
+        let fullText = rawResult.value;
+
+        if (!fullText) {
+             throw new Error('文档内容为空');
+        }
+        
+        sendProgress(10, `文本提取成功 (${fullText.length} 字符)，准备 AI 深度解析...`);
+
+        const questions = await parseWithAI(fullText, (percent, msg) => {
+            const mappedPercent = 10 + Math.round(percent * 0.85);
+            sendProgress(mappedPercent, msg);
+        });
+        
+        sendProgress(95, 'AI 解析完成');
+        res.write(JSON.stringify({
+            type: 'complete',
+            success: true,
+            count: questions.length,
+            questions: questions
+        }) + '\n');
+
+    } catch (error) {
+        console.error('AI 预览失败:', error);
+        res.write(JSON.stringify({ type: 'error', message: '服务器内部错误: ' + error.message }) + '\n');
+    } finally {
+        res.end();
     }
 });
 

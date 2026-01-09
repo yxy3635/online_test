@@ -547,6 +547,61 @@ __      _____| | ___ ___  _ __ ___   ___
         input:checked + .slider:before {
             transform: translateX(30px);
         }
+        /* 错题本自动添加滑块开关 */
+        .wrongbook-switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 28px;
+        }
+        .wrongbook-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .wrongbook-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 28px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .wrongbook-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.1);
+            z-index: 2;
+        }
+        .wrongbook-switch input:checked + .wrongbook-slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        .wrongbook-switch input:checked + .wrongbook-slider:before {
+            transform: translateX(24px);
+            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4), 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .wrongbook-switch:hover .wrongbook-slider {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+        }
+        .wrongbook-switch:hover input:checked + .wrongbook-slider {
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.25);
+        }
+        .wrongbook-switch input:focus + .wrongbook-slider {
+            outline: 2px solid rgba(102, 126, 234, 0.5);
+            outline-offset: 2px;
+        }
         .icon-sun, .icon-moon {
             font-size: 14px;
             z-index: 1;
@@ -1440,7 +1495,8 @@ __      _____| | ___ ___  _ __ ___   ___
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn-outline" onclick="openDashboard()">仪表盘</button>
                 <button class="btn btn-outline" style="border-color: #9333ea; color: #9333ea;" onclick="openChallengeConfig()">挑战模式</button>
-                <button class="btn btn-outline" onclick="toggleView('wrongbook')">错题本</button>
+                <button class="btn btn-outline" style="border-color: #e32910; color: #ea6133;" onclick="toggleView('wrongbook')">错题本</button>
+                <button class="btn btn-outline" onclick="openKeyboardSettings()">快捷键设置</button>
                 <button class="btn btn-outline" onclick="toggleView('api')">API 文档</button>
                 <button class="btn btn-primary" onclick="toggleView('upload')">上传新题目</button>
             </div>
@@ -1453,6 +1509,12 @@ __      _____| | ___ ___  _ __ ___   ___
                     https://github.com/yxy3635/online_test
                 </a>
                 求start！
+            </p><br />
+            <p style="margin: 0; font-size: 0.95rem;">
+                <strong>主页：</strong>
+                <a href="http://www.qzcy2.top/" target="_blank" rel="noopener" style="color: #2563eb; text-decoration: underline; font-weight: 600;">
+                    http://www.qzcy2.top/
+                </a>
             </p>
         </div>
         
@@ -1495,6 +1557,13 @@ __      _____| | ___ ___  _ __ ___   ___
                     <button class="btn btn-secondary" onclick="invertSelection()" style="padding: 6px 12px; font-size: 0.85rem;">反选</button>
                     <button class="btn btn-danger" id="btn-delete-selected" onclick="deleteSelectedWrongQuestions()" style="padding: 6px 12px; font-size: 0.85rem; display: none;">删除选中</button>
                 </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-left: 1px solid var(--border-color); margin-left: 10px;border: 1px solid #e2e8f0;border-radius: 20px;">
+                    <span style="font-size: 0.9rem; white-space: nowrap; color: var(--text-main);">自动添加错题本</span>
+                    <label class="wrongbook-switch" title="开启后，答错题目时自动添加到错题本">
+                        <input type="checkbox" id="auto-add-wrongbook-toggle" onchange="toggleAutoAddWrongBook()">
+                        <span class="wrongbook-slider"></span>
+                    </label>
+                </div>
                 <button class="btn btn-secondary" onclick="toggleView('home')">返回首页</button>
             </div>
         </div>
@@ -1510,16 +1579,17 @@ __      _____| | ___ ___  _ __ ___   ___
             <h2 class="section-title">上传新题目</h2>
         </div>
         
-        <div class="form-group">
-            <label class="form-label">上传者姓名</label>
-            <input type="text" id="uploaderName" class="form-input" placeholder="例如：yxy大帅比">
-        </div>
         
         <div class="form-group">
             <label class="form-label">科目名称 / 试卷标题</label>
             <input type="text" id="subjectName" class="form-input" placeholder="例如：2024期末复习题">
         </div>
-
+        
+        <div class="form-group">
+            <label class="form-label">上传者姓名</label>
+            <input type="text" id="uploaderName" class="form-input" placeholder="例如：yxy大帅比">
+        </div>
+        
         <div class="form-group" id="docx-upload-group">
             <label class="form-label">题目文档 (.docx)</label>
             <div class="file-drop-zone" onclick="document.getElementById('fileInput').click()">
@@ -1742,16 +1812,159 @@ __      _____| | ___ ___  _ __ ___   ___
             transition: transform 0.2s;
         }
         .ai-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3); }
-        /* 思考中的动画 */
         .ai-btn.thinking {
-            background: linear-gradient(90deg, #a855f7, #d946ef, #a855f7);
-            background-size: 200% 100%;
-            animation: ai-thinking 1.5s linear infinite;
+            background: linear-gradient(135deg, #9333ea 0%, #a855f7 50%, #9333ea 100%);
+            background-size: 200% 200%;
             cursor: not-allowed;
+            position: relative;
+            overflow: visible;
+            animation: ai-gradient-flow 3s ease-in-out infinite, ai-breathing 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            box-shadow: 
+                0 4px 20px rgba(168, 85, 247, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
-        @keyframes ai-thinking {
-            0% { background-position: 100% 0; }
-            100% { background-position: -100% 0; }
+        
+        .ai-btn.thinking::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.5) 0%, rgba(168, 85, 247, 0.2) 40%, transparent 70%);
+            animation: ai-glow-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            z-index: -1;
+        }
+        
+        .ai-btn.thinking::after {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 15%;
+            width: 3px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            animation: ai-particle-1 2s ease-in-out infinite;
+            box-shadow: 
+                0 0 6px rgba(255, 255, 255, 0.8),
+                0 0 12px rgba(255, 255, 255, 0.4);
+        }
+        
+        .ai-btn.thinking .thinking-icon {
+            display: inline-block;
+            animation: ai-icon-rotate 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+            transform-origin: center;
+        }
+        
+        .ai-btn.thinking .thinking-text {
+            display: inline-block;
+        }
+        
+        .ai-btn.thinking .thinking-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            margin-left: 2px;
+        }
+        
+        .ai-btn.thinking .thinking-dot {
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            animation: ai-dot-bounce 1.4s ease-in-out infinite;
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
+        }
+        
+        .ai-btn.thinking .thinking-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .ai-btn.thinking .thinking-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .ai-btn.thinking .thinking-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes ai-gradient-flow {
+            0%, 100% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+        
+        @keyframes ai-breathing {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+        }
+        
+        @keyframes ai-glow-pulse {
+            0%, 100% {
+                opacity: 0.6;
+                transform: scale(0.98);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.15);
+            }
+        }
+        
+        @keyframes ai-particle-1 {
+            0%, 100% {
+                opacity: 0;
+                transform: translate(0, 0) scale(0.5);
+            }
+            25% {
+                opacity: 1;
+                transform: translate(10px, -5px) scale(1.2);
+            }
+            50% {
+                opacity: 0.7;
+                transform: translate(20px, 5px) scale(0.8);
+            }
+            75% {
+                opacity: 1;
+                transform: translate(15px, -3px) scale(1);
+            }
+        }
+        
+        @keyframes ai-icon-rotate {
+            0%, 100% {
+                transform: rotate(0deg) scale(1);
+                opacity: 1;
+            }
+            25% {
+                transform: rotate(5deg) scale(1.1);
+                opacity: 0.9;
+            }
+            50% {
+                transform: rotate(0deg) scale(1);
+                opacity: 1;
+            }
+            75% {
+                transform: rotate(-5deg) scale(1.1);
+                opacity: 0.9;
+            }
+        }
+        
+        @keyframes ai-dot-bounce {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+                opacity: 0.7;
+            }
+            50% {
+                transform: translateY(-8px) scale(1.3);
+                opacity: 1;
+            }
         }
 
         .ai-box {
@@ -1916,7 +2129,10 @@ __      _____| | ___ ___  _ __ ___   ___
                 
                 <div id="question-container"></div>
                 
+                
+                
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 30px; border-top: 1px solid #edf2f7; padding-top: 20px;">
+                    <button class="btn btn-secondary" id="btn-prev" onclick="goToPreviousQuestion()" style="display: none;">上一题</button>
                     <button class="btn btn-secondary" id="btn-add-wrong" onclick="addToWrongBook()" style="display: none;">加入错题</button>
                     <button class="btn btn-primary" id="btn-action" onclick="handleAction()">提交本题</button>
                 </div>
@@ -2081,7 +2297,90 @@ __      _____| | ___ ___  _ __ ___   ___
 
 <div class="footer">&copy; 千纸雏鸢 · Online Quiz System | github <a href="https://github.com/yxy3635/online_test" target="_blank" rel="noopener">https://github.com/yxy3635/online_test</a></div>
 
-<div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 10000; pointer-events: none;"></div>
+<div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 10002; pointer-events: none;"></div>
+
+<!-- 题目预览模态框 -->
+<div id="question-preview-modal" class="question-preview-modal" onclick="closeQuestionPreview(event)">
+    <div class="question-preview-content" onclick="event.stopPropagation();">
+        <div class="question-preview-header">
+            <div class="question-preview-title">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 10px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <h2>题目预览</h2>
+            </div>
+            <button class="question-preview-close" onclick="closeQuestionPreview()" title="关闭">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="question-preview-body">
+            <div style="padding: 15px; background: #f0f9ff; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bae6fd;">
+                <div style="font-size: 1.1rem; font-weight: 600; color: #0369a1; margin-bottom: 5px;">
+                    本次上传 <span id="preview-question-count" style="color: #0284c7; font-size: 1.3rem;">0</span> 道题
+                </div>
+                <div style="font-size: 0.9rem; color: #075985;">请仔细检查题目内容，确认无误后点击"确认上传"</div>
+            </div>
+            <div id="preview-questions-list" style="max-height: 500px; overflow-y: auto; padding-right: 10px;">
+                <!-- 题目列表将动态生成 -->
+            </div>
+        </div>
+        <div class="question-preview-footer">
+            <button class="btn btn-secondary" onclick="closeQuestionPreview()">取消</button>
+            <button class="btn btn-primary" onclick="confirmUpload()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 6px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                确认上传
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 快捷键设置模态框 -->
+<div id="keyboard-settings-modal" class="keyboard-settings-modal" onclick="closeKeyboardSettings(event)">
+    <div class="keyboard-settings-content" onclick="event.stopPropagation();">
+        <div class="keyboard-settings-header">
+            <div class="keyboard-settings-title">
+                <svg class="keyboard-settings-icon" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                </svg>
+                <h2>快捷键设置</h2>
+            </div>
+            <button class="keyboard-settings-close" onclick="closeKeyboardSettings()" title="关闭">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="keyboard-settings-body">
+            <div class="keyboard-simulator-container">
+                <div class="keyboard-simulator" id="keyboard-simulator">
+                    <!-- 键盘布局将动态生成 -->
+                </div>
+            </div>
+            <div class="keyboard-settings-list" id="keyboard-settings-list">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+        <div class="keyboard-settings-footer">
+            <button class="btn btn-secondary" onclick="resetKeyboardSettings()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 6px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                恢复默认
+            </button>
+            <button class="btn btn-primary" onclick="saveKeyboardSettings()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 6px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                保存设置
+            </button>
+        </div>
+    </div>
+</div>
 
 <style>
     .toast {
@@ -2096,23 +2395,612 @@ __      _____| | ___ ___  _ __ ___   ___
         max-width: 300px;
         font-size: 0.9rem;
     }
-    @keyframes toastSlideIn {
+    
+    /* 快捷键提示样式 */
+    kbd {
+        display: inline-block;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        font-family: monospace;
+        background: #fff;
+        border: 1px solid #cbd5e0;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        color: var(--text-main);
+        font-weight: 600;
+        min-width: 24px;
+        text-align: center;
+    }
+    
+    body.dark-mode kbd {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: var(--text-main);
+    }
+    
+    /* 题目预览模态框样式 */
+    .question-preview-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10002;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        animation: modalFadeIn 0.2s ease-out;
+    }
+    
+    .question-preview-modal.open {
+        display: flex;
+    }
+    
+    .question-preview-content {
+        background: var(--card-bg);
+        border-radius: 16px;
+        max-width: 900px;
+        width: 90%;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        animation: modalSlideUp 0.3s ease-out;
+        overflow: hidden;
+    }
+    
+    .question-preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px 28px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    }
+    
+    .question-preview-title {
+        display: flex;
+        align-items: center;
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+    
+    .question-preview-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .question-preview-close:hover {
+        background: rgba(0, 0, 0, 0.05);
+        color: var(--text-main);
+    }
+    
+    .question-preview-body {
+        padding: 24px 28px;
+        overflow-y: auto;
+        flex: 1;
+    }
+    
+    .question-preview-item {
+        padding: 16px;
+        margin-bottom: 12px;
+        background: var(--card-bg);
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        transition: all 0.2s;
+    }
+    
+    .question-preview-item:hover {
+        border-color: var(--primary-color);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    }
+    
+    .question-preview-item-title {
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+    
+    .question-preview-item-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+    }
+    
+    .question-preview-item-options {
+        margin-top: 8px;
+        padding-left: 12px;
+    }
+    
+    .question-preview-item-option {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin: 4px 0;
+    }
+    
+    .question-preview-item-answer {
+        margin-top: 8px;
+        padding: 8px 12px;
+        background: #f0f9ff;
+        border-left: 3px solid #0284c7;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: #0369a1;
+    }
+    
+    .question-preview-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 28px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        background: rgba(0, 0, 0, 0.02);
+    }
+    
+    #preview-questions-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    #preview-questions-list::-webkit-scrollbar-thumb {
+        background: #cbd5e0;
+        border-radius: 3px;
+    }
+    
+    #preview-questions-list::-webkit-scrollbar-thumb:hover {
+        background: #a0aec0;
+    }
+
+    /* 快捷键设置模态框样式 */
+    .keyboard-settings-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        animation: modalFadeIn 0.2s ease-out;
+    }
+    
+    @keyframes modalFadeIn {
         from {
-            transform: translateX(100%);
             opacity: 0;
         }
         to {
-            transform: translateX(0);
             opacity: 1;
         }
     }
-    @keyframes toastFadeOut {
+    
+    .keyboard-settings-modal.open {
+        display: flex;
+    }
+    
+    .keyboard-settings-content {
+        background: var(--card-bg);
+        border-radius: 16px;
+        max-width: 640px;
+        width: 90%;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        animation: modalSlideUp 0.3s ease-out;
+        overflow: hidden;
+    }
+    
+    @keyframes modalSlideUp {
         from {
-            opacity: 1;
+            transform: translateY(20px);
+            opacity: 0;
         }
         to {
-            opacity: 0;
-            transform: translateX(100%);
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .keyboard-settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px 28px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    }
+    
+    body.dark-mode .keyboard-settings-header {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    }
+    
+    .keyboard-settings-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .keyboard-settings-icon {
+        color: var(--primary-color);
+        flex-shrink: 0;
+    }
+    
+    .keyboard-settings-title h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-main);
+        letter-spacing: -0.02em;
+    }
+    
+    .keyboard-settings-close {
+        border: none;
+        background: rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+    }
+    
+    .keyboard-settings-close:hover {
+        background: rgba(0, 0, 0, 0.1);
+        color: var(--text-main);
+        transform: rotate(90deg);
+    }
+    
+    body.dark-mode .keyboard-settings-close {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    body.dark-mode .keyboard-settings-close:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .keyboard-settings-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px 28px;
+        /* 自定义滚动条样式 */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+    }
+    
+    .keyboard-settings-body::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .keyboard-settings-body::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 4px;
+    }
+    
+    .keyboard-settings-body::-webkit-scrollbar-thumb {
+        background: rgba(102, 126, 234, 0.3);
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+    
+    .keyboard-settings-body::-webkit-scrollbar-thumb:hover {
+        background: rgba(102, 126, 234, 0.5);
+    }
+    
+    body.dark-mode .keyboard-settings-body {
+        scrollbar-color: rgba(102, 126, 234, 0.5) transparent;
+    }
+    
+    body.dark-mode .keyboard-settings-body::-webkit-scrollbar-thumb {
+        background: rgba(102, 126, 234, 0.5);
+    }
+    
+    body.dark-mode .keyboard-settings-body::-webkit-scrollbar-thumb:hover {
+        background: rgba(102, 126, 234, 0.7);
+    }
+    
+    .keyboard-settings-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .keyboard-setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 18px;
+        background: #f8fafc;
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .keyboard-setting-item:hover {
+        border-color: var(--primary-color);
+        background: #f0f4ff;
+        transform: translateX(4px);
+    }
+    
+    .keyboard-setting-item.active {
+        border-color: var(--primary-color);
+        background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    body.dark-mode .keyboard-setting-item {
+        background: #1e293b;
+        border-color: #334155;
+    }
+    
+    body.dark-mode .keyboard-setting-item:hover {
+        background: #1e3a8a;
+        border-color: var(--primary-color);
+    }
+    
+    body.dark-mode .keyboard-setting-item.active {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(102, 126, 234, 0.1) 100%);
+    }
+    
+    .keyboard-setting-item .label {
+        flex: 1;
+        font-weight: 500;
+        font-size: 0.95rem;
+        color: var(--text-main);
+    }
+    
+    .keyboard-setting-item .key-display {
+        padding: 6px 12px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-family: monospace;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--primary-color);
+        min-width: 50px;
+        text-align: center;
+    }
+    
+    body.dark-mode .keyboard-setting-item .key-display {
+        background: #0f172a;
+        border-color: #334155;
+    }
+    
+    .keyboard-settings-current {
+        text-align: center;
+        padding: 20px;
+        margin-bottom: 20px;
+        background: rgba(102, 126, 234, 0.05);
+        border-radius: 12px;
+        border: 2px dashed rgba(102, 126, 234, 0.2);
+    }
+    
+    .current-setting-label {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+    }
+    
+    .current-setting-key {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        font-family: monospace;
+    }
+    
+    .keyboard-simulator-container {
+        margin: 0 0 20px 0;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.02);
+        border-radius: 12px;
+        overflow: visible;
+    }
+    
+    .keyboard-simulator {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        width: 100%;
+        margin: 0 auto;
+        transform: scale(0.85);
+        transform-origin: top center;
+    }
+    
+    .keyboard-row {
+        display: flex;
+        gap: 3px;
+        justify-content: center;
+        flex-wrap: nowrap;
+    }
+    
+    .keyboard-key {
+        padding: 8px 10px;
+        background: #fff;
+        border: 2px solid #e2e8f0;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-main);
+        transition: all 0.15s;
+        min-width: 38px;
+        width: auto;
+        text-align: center;
+        user-select: none;
+        position: relative;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    
+    .keyboard-key:hover {
+        background: #f8faff;
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .keyboard-key.active {
+        background: var(--primary-color);
+        color: #fff;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+    }
+    
+    .keyboard-key.assigned {
+        background: #eef2ff;
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+    
+    .keyboard-key.wide {
+        min-width: 60px;
+    }
+    
+    .keyboard-key.space {
+        min-width: 180px;
+        flex-grow: 0;
+    }
+    
+    body.dark-mode .keyboard-settings-current {
+        background: rgba(102, 126, 234, 0.1);
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    body.dark-mode .keyboard-simulator-container {
+        background: rgba(255, 255, 255, 0.02);
+    }
+    
+    body.dark-mode .keyboard-key {
+        background: #1e293b;
+        border-color: #334155;
+        color: var(--text-main);
+    }
+    
+    body.dark-mode .keyboard-key:hover {
+        background: #1e3a8a;
+        border-color: var(--primary-color);
+    }
+    
+    body.dark-mode .keyboard-key.assigned {
+        background: rgba(102, 126, 234, 0.2);
+        border-color: var(--primary-color);
+    }
+    
+    .keyboard-settings-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 28px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        background: rgba(0, 0, 0, 0.02);
+    }
+    
+    body.dark-mode .keyboard-settings-footer {
+        border-top-color: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.02);
+    }
+    
+    .keyboard-settings-footer .btn {
+        display: flex;
+        align-items: center;
+        padding: 10px 20px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .keyboard-settings-footer .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    @keyframes keyListening {
+        0%, 100% {
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+            transform: scale(1);
+        }
+        50% {
+            box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.1);
+            transform: scale(1.02);
+        }
+    }
+    
+    @media (max-width: 640px) {
+        .keyboard-settings-content {
+            width: 95%;
+            max-height: 90vh;
+            border-radius: 12px;
+        }
+        
+        .keyboard-settings-header {
+            padding: 20px;
+        }
+        
+        .keyboard-settings-body {
+            padding: 16px 20px;
+        }
+        
+        .keyboard-settings-footer {
+            padding: 16px 20px;
+            flex-direction: column-reverse;
+        }
+        
+        .keyboard-settings-footer .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .keyboard-setting-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .keyboard-simulator-container {
+            padding: 12px;
+            margin: 16px 0;
+        }
+        
+        .keyboard-simulator {
+            gap: 4px;
+            min-width: 500px;
+        }
+        
+        .keyboard-key {
+            padding: 8px 10px;
+            font-size: 0.7rem;
+            min-width: 36px;
+        }
+        
+        .keyboard-key.wide {
+            min-width: 60px;
+        }
+        
+        .keyboard-key.space {
+            min-width: 150px;
         }
     }
 </style>
@@ -2140,12 +3028,411 @@ __      _____| | ___ ___  _ __ ___   ___
     let userId = localStorage.getItem('system_user_id') || ('user_' + Math.random().toString(36).substr(2, 9));
     localStorage.setItem('system_user_id', userId);
 
+    // 键盘快捷键配置
+    let keyboardSettings = {
+        optionA: 'Digit1',
+        optionB: 'Digit2',
+        optionC: 'Digit3',
+        optionD: 'Digit4',
+        submit: 'Enter',
+        next: 'ArrowRight',
+        prev: 'ArrowLeft',
+        addWrong: 'KeyW'
+    };
+    
+    // 键名映射（用于显示）
+    const keyNameMap = {
+        'KeyA': 'A', 'KeyB': 'B', 'KeyC': 'C', 'KeyD': 'D',
+        'KeyW': 'W', 'KeyE': 'E', 'KeyR': 'R', 'KeyT': 'T',
+        'KeyY': 'Y', 'KeyU': 'U', 'KeyI': 'I', 'KeyO': 'O',
+        'KeyP': 'P', 'KeyS': 'S', 'KeyF': 'F', 'KeyG': 'G',
+        'KeyH': 'H', 'KeyJ': 'J', 'KeyK': 'K', 'KeyL': 'L',
+        'KeyZ': 'Z', 'KeyX': 'X', 'KeyV': 'V', 'KeyN': 'N',
+        'KeyM': 'M', 'Digit1': '1', 'Digit2': '2', 'Digit3': '3',
+        'Digit4': '4', 'Digit5': '5', 'Digit6': '6', 'Digit7': '7',
+        'Digit8': '8', 'Digit9': '9', 'Digit0': '0',
+        'Enter': 'Enter', 'Space': 'Space',
+        'ArrowLeft': '←', 'ArrowRight': '→', 'ArrowUp': '↑', 'ArrowDown': '↓',
+        'Tab': 'Tab', 'CapsLock': 'Caps', 'ControlLeft': 'Ctrl', 'AltLeft': 'Alt',
+        'Escape': 'Esc'
+    };
+    
+    // 加载键盘设置
+    function loadKeyboardSettings() {
+        const saved = localStorage.getItem('keyboard_settings');
+        if (saved) {
+            try {
+                keyboardSettings = { ...keyboardSettings, ...JSON.parse(saved) };
+            } catch (e) {
+                console.error('加载键盘设置失败:', e);
+            }
+        }
+        updateKeyboardHints();
+    }
+    
+    // 保存键盘设置
+    function saveKeyboardSettings() {
+        localStorage.setItem('keyboard_settings', JSON.stringify(keyboardSettings));
+        updateKeyboardHints();
+        closeKeyboardSettings();
+        showToast('快捷键设置已保存');
+    }
+    
+    // 恢复默认设置
+    function resetKeyboardSettings() {
+        keyboardSettings = {
+            optionA: 'Digit1',
+            optionB: 'Digit2',
+            optionC: 'Digit3',
+            optionD: 'Digit4',
+            submit: 'Enter',
+            next: 'ArrowRight',
+            prev: 'ArrowLeft',
+            addWrong: 'KeyW'
+        };
+        renderKeyboardSettings();
+        showToast('已恢复默认设置');
+    }
+    
+    // 更新快捷键提示
+    function updateKeyboardHints() {
+        const hints = document.getElementById('keyboard-hints');
+        if (!hints) return;
+        
+        document.getElementById('hint-option-a').textContent = keyNameMap[keyboardSettings.optionA] || keyboardSettings.optionA;
+        document.getElementById('hint-option-b').textContent = keyNameMap[keyboardSettings.optionB] || keyboardSettings.optionB;
+        document.getElementById('hint-option-c').textContent = keyNameMap[keyboardSettings.optionC] || keyboardSettings.optionC;
+        document.getElementById('hint-option-d').textContent = keyNameMap[keyboardSettings.optionD] || keyboardSettings.optionD;
+        document.getElementById('hint-submit').textContent = keyNameMap[keyboardSettings.submit] || keyboardSettings.submit;
+        document.getElementById('hint-next').textContent = keyNameMap[keyboardSettings.next] || keyboardSettings.next;
+        const hintPrev = document.getElementById('hint-prev');
+        if (hintPrev) {
+            hintPrev.textContent = keyNameMap[keyboardSettings.prev] || keyboardSettings.prev;
+        }
+        document.getElementById('hint-add-wrong').textContent = keyNameMap[keyboardSettings.addWrong] || keyboardSettings.addWrong;
+    }
+    
+    // 打开快捷键设置
+    function openKeyboardSettings() {
+        const modal = document.getElementById('keyboard-settings-modal');
+        if (modal) {
+            modal.classList.add('open');
+            renderKeyboardSettings();
+        }
+    }
+    
+    // 关闭快捷键设置
+    function closeKeyboardSettings(event) {
+        if (event && event.target !== event.currentTarget) return;
+        const modal = document.getElementById('keyboard-settings-modal');
+        if (modal) {
+            modal.classList.remove('open');
+            currentSettingKey = null;
+        }
+    }
+    
+    // 当前选中的设置项
+    let currentSettingKey = null;
+    
+    // 渲染快捷键设置界面
+    function renderKeyboardSettings() {
+        const list = document.getElementById('keyboard-settings-list');
+        const simulator = document.getElementById('keyboard-simulator');
+        if (!list || !simulator) return;
+        
+        const settings = [
+            { key: 'optionA', label: '选项A/对' },
+            { key: 'optionB', label: '选项B/错' },
+            { key: 'optionC', label: '选项C' },
+            { key: 'optionD', label: '选项D' },
+            { key: 'submit', label: '提交答案' },
+            { key: 'next', label: '下一题' },
+            { key: 'prev', label: '上一题' },
+            { key: 'addWrong', label: '加入错题本' }
+        ];
+        
+        // 渲染功能列表
+        list.innerHTML = settings.map(setting => {
+            const currentKey = keyboardSettings[setting.key];
+            const displayName = keyNameMap[currentKey] || currentKey;
+            return `
+                <div class="keyboard-setting-item ${currentSettingKey === setting.key ? 'active' : ''}" 
+                     onclick="selectSetting('${setting.key}')">
+                    <span class="label">${setting.label}</span>
+                    <span class="key-display">${displayName}</span>
+                </div>
+            `;
+        }).join('');
+        
+        // 渲染键盘模拟器
+        renderKeyboardSimulator();
+    }
+    
+    // 选择设置项
+    window.selectSetting = function(settingKey) {
+        currentSettingKey = settingKey;
+        renderKeyboardSettings();
+    }
+    
+    // 渲染键盘模拟器
+    function renderKeyboardSimulator() {
+        const simulator = document.getElementById('keyboard-simulator');
+        if (!simulator) return;
+        
+        // 笔记本键盘布局（更真实的布局）
+        const keyboardLayout = [
+            // 数字行
+            { keys: ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'], offset: 0 },
+            // QWERTY行
+            { keys: ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP'], offset: 0 },
+            // ASDF行（Tab键偏移）
+            { keys: ['Tab', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL'], offset: 1 },
+            // ZXCV行（Caps Lock和Shift偏移）
+            { keys: ['CapsLock', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM'], offset: 1.5 },
+            // 功能键行（Ctrl、Alt、Space等）
+            { keys: ['ControlLeft', 'AltLeft', 'Space', 'AltRight', 'ControlRight'], offset: 0 },
+            // 方向键和Enter
+            { keys: ['ArrowLeft', 'ArrowUp', 'ArrowDown', 'ArrowRight', 'Enter'], offset: 0 }
+        ];
+        
+        // 获取所有已分配的按键
+        const assignedKeys = Object.values(keyboardSettings);
+        
+        simulator.innerHTML = keyboardLayout.map((row, rowIndex) => {
+            const offsetStyle = row.offset > 0 ? `margin-left: ${row.offset * 50}px;` : '';
+            return `
+                <div class="keyboard-row" style="${offsetStyle}">
+                    ${row.keys.map(keyCode => {
+                        // 处理特殊键名映射到实际的keyCode
+                        let actualKeyCode = keyCode;
+                        let displayName = keyNameMap[keyCode] || keyCode;
+                        
+                        // 映射到浏览器实际使用的keyCode
+                        if (keyCode === 'Tab') {
+                            actualKeyCode = 'Tab';
+                            displayName = 'Tab';
+                        } else if (keyCode === 'CapsLock') {
+                            actualKeyCode = 'CapsLock';
+                            displayName = 'Caps';
+                        } else if (keyCode === 'ControlLeft' || keyCode === 'ControlRight') {
+                            actualKeyCode = 'ControlLeft'; // 统一使用ControlLeft
+                            displayName = 'Ctrl';
+                        } else if (keyCode === 'AltLeft' || keyCode === 'AltRight') {
+                            actualKeyCode = 'AltLeft'; // 统一使用AltLeft
+                            displayName = 'Alt';
+                        } else {
+                            displayName = keyNameMap[keyCode] || keyCode;
+                        }
+                        
+                        const isAssigned = assignedKeys.includes(actualKeyCode);
+                        const isCurrent = currentSettingKey && keyboardSettings[currentSettingKey] === actualKeyCode;
+                        
+                        let keyClass = 'keyboard-key';
+                        if (isCurrent) keyClass += ' active';
+                        if (isAssigned && !isCurrent) keyClass += ' assigned';
+                        if (keyCode === 'Space') keyClass += ' space';
+                        if (keyCode === 'Enter' || keyCode === 'Tab' || keyCode === 'CapsLock' || 
+                            keyCode === 'ControlLeft' || keyCode === 'ControlRight' || 
+                            keyCode === 'AltLeft' || keyCode === 'AltRight') {
+                            keyClass += ' wide';
+                        }
+                        
+                        return `<div class="${keyClass}" data-keycode="${actualKeyCode}" onclick="setKeyboardKey('${actualKeyCode}')">${displayName}</div>`;
+                    }).join('')}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // 设置键盘按键
+    window.setKeyboardKey = function(keyCode) {
+        if (!currentSettingKey) {
+            showToast('请先选择要设置的功能');
+            return;
+        }
+        
+        // 检查是否与其他快捷键冲突
+        let hasConflict = false;
+        let conflictKey = null;
+        for (const [key, value] of Object.entries(keyboardSettings)) {
+            if (key !== currentSettingKey && value === keyCode) {
+                hasConflict = true;
+                conflictKey = key;
+                break;
+            }
+        }
+        
+        if (hasConflict) {
+            const conflictLabel = {
+                'optionA': '选项1',
+                'optionB': '选项2',
+                'optionC': '选项3',
+                'optionD': '选项4',
+                'submit': '提交答案',
+                'next': '下一题',
+                'addWrong': '加入错题本'
+            };
+            showToast(`该按键已被 "${conflictLabel[conflictKey]}" 使用`, 3000);
+            return;
+        }
+        
+        // 设置快捷键
+        keyboardSettings[currentSettingKey] = keyCode;
+        renderKeyboardSettings();
+        showToast('快捷键已设置', 2000);
+    }
+    
+    
+    // 获取设置标签
+    function getSettingLabel(key) {
+        const map = {
+            'optionA': '选项1',
+            'optionB': '选项2',
+            'optionC': '选项3',
+            'optionD': '选项4',
+            'submit': '提交答案',
+            'next': '下一题',
+            'prev': '上一题',
+            'addWrong': '加入错题本'
+        };
+        return map[key] || key;
+    }
+    
+    // 键盘事件处理
+    function handleKeyboardEvent(e) {
+        // 如果正在输入文本，不处理快捷键
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+            // 如果是文本输入框，只处理非字符键
+            if (activeElement.type === 'text' || activeElement.tagName === 'TEXTAREA') {
+                // 允许处理方向键和Enter键
+                if (e.code !== 'ArrowRight' && e.code !== 'ArrowLeft' && e.code !== 'Enter') {
+                    return;
+                }
+            }
+        }
+        
+        const code = e.code;
+        
+        // 选择选项
+        if (code === keyboardSettings.optionA || code === keyboardSettings.optionB || 
+            code === keyboardSettings.optionC || code === keyboardSettings.optionD) {
+            if (currentStep !== 'answering') return;
+            
+            // 检查当前题目类型
+            const q = currentQuestions[currentIndex];
+            const isJudgement = q && (q.type === '判断题' || q.answer === '正确' || q.answer === '错误' || 
+                q.answer === '对' || q.answer === '错' || q.answer === '是' || q.answer === '否');
+            
+            if (isJudgement) {
+                // 判断题：1=正确，2=错误
+                e.preventDefault();
+                if (code === keyboardSettings.optionA) {
+                    selectJudgementOption('正确');
+                } else if (code === keyboardSettings.optionB) {
+                    selectJudgementOption('错误');
+                }
+            } else {
+                // 选择题：1=A, 2=B, 3=C, 4=D
+                const optionMap = {
+                    [keyboardSettings.optionA]: 'A',
+                    [keyboardSettings.optionB]: 'B',
+                    [keyboardSettings.optionC]: 'C',
+                    [keyboardSettings.optionD]: 'D'
+                };
+                
+                const selectedOption = optionMap[code];
+                if (selectedOption) {
+                    e.preventDefault();
+                    selectOptionByKey(selectedOption);
+                }
+            }
+            return;
+        }
+        
+        // 提交
+        if (code === keyboardSettings.submit) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-action');
+            if (btn && btn.textContent === '提交本题') {
+                handleAction();
+            }
+            return;
+        }
+        
+        // 下一题
+        if (code === keyboardSettings.next) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-action');
+            if (btn && (btn.textContent === '下一题' || btn.textContent === '查看结果')) {
+                handleAction();
+            }
+            return;
+        }
+        
+        // 上一题
+        if (code === keyboardSettings.prev) {
+            e.preventDefault();
+            const prevBtn = document.getElementById('btn-prev');
+            if (prevBtn && prevBtn.style.display !== 'none') {
+                goToPreviousQuestion();
+            }
+            return;
+        }
+        
+        // 加入错题本
+        if (code === keyboardSettings.addWrong) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-add-wrong');
+            if (btn && btn.style.display !== 'none') {
+                addToWrongBook();
+            }
+            return;
+        }
+    }
+    
+    // 通过按键选择选项
+    function selectOptionByKey(optionLabel) {
+        const inputs = document.querySelectorAll('input[name="q"]');
+        if (inputs.length === 0) return;
+        
+        const targetInput = Array.from(inputs).find(input => {
+            const label = input.parentElement;
+            const labelText = label.querySelector('strong');
+            if (labelText) {
+                return labelText.textContent.trim().replace('.', '') === optionLabel;
+            }
+            return false;
+        });
+        
+        if (targetInput) {
+            const label = targetInput.parentElement;
+            const type = targetInput.type;
+            selectOption(label, type);
+        }
+    }
+    
+    // 通过按键选择判断题选项
+    function selectJudgementOption(value) {
+        const inputs = document.querySelectorAll('input[name="q"]');
+        if (inputs.length === 0) return;
+        
+        const targetInput = Array.from(inputs).find(input => input.value === value);
+        
+        if (targetInput) {
+            const label = targetInput.parentElement;
+            selectOption(label, 'radio');
+        }
+    }
+
     window.onload = () => {
         loadExamList();
         loadChallengeHistory(); // 加载历史记录
         initBackground(); // 初始化背景
         loadBackgroundList(); // 加载背景列表
         startHeartbeat(); // 启动心跳
+        loadKeyboardSettings(); // 加载键盘设置
+        document.addEventListener('keydown', handleKeyboardEvent); // 添加键盘监听
         setTimeout(() => {
             if (typeof onUploadModeChange === 'function') onUploadModeChange();
         }, 0);
@@ -3164,6 +4451,11 @@ __      _____| | ___ ___  _ __ ___   ___
     let progressTimer = null;
     let targetPercentVal = 0;
     let currentPercentVal = 0;
+    let previewQuestions = null; // 存储预览的题目数据
+    let previewUploader = '';
+    let previewSubject = '';
+    let previewMode = '';
+    let previewFile = null; // 存储文件，用于确认上传时使用
 
     function handleFileSelect() {
         const file = document.getElementById('fileInput').files[0];
@@ -3189,10 +4481,9 @@ __      _____| | ___ ___  _ __ ___   ___
                 return;
             }
         } catch (e) {
-            // 继续走降级方案
+            console.error(e.error);
         }
 
-        // 降级：使用临时 textarea + execCommand
         try {
             const ta = document.createElement('textarea');
             ta.value = text;
@@ -3321,7 +4612,7 @@ __      _____| | ___ ___  _ __ ___   ___
         logsDiv.innerHTML = ''; // 清空日志
         addLog('任务已提交，准备开始处理...');
 
-        // JSON 导入分支（不走 FormData）
+        // JSON 导入分支：直接解析并显示预览
         if (mode === 'json') {
             try {
                 targetPercentVal = 20;
@@ -3348,27 +4639,17 @@ __      _____| | ___ ___  _ __ ___   ___
                     throw new Error('JSON 中未找到题目数组（需要 [题目数组] 或 {questions:[...]}）');
                 }
 
-                targetPercentVal = 70;
-                addLog(`已识别 ${questions.length} 题，开始入库...`, true);
-
-                targetPercentVal = 90;
-                const response = await fetch('/api/upload/json', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uploader, subject, questions })
-                });
-                const data = await response.json();
-
-                if (response.ok && !data.error) {
-                    targetPercentVal = 100;
-                    currentPercentVal = 100;
-                    progressBar.style.width = '100%';
-                    progressPercent.innerText = '100%';
-                    addLog('导入完成！', true);
-                    finishUpload(true, data.message || '导入成功！');
-                } else {
-                    throw new Error(data.error || data.message || '导入失败');
-                }
+                targetPercentVal = 100;
+                currentPercentVal = 100;
+                progressBar.style.width = '100%';
+                progressPercent.innerText = '100%';
+                addLog(`已识别 ${questions.length} 题`, true);
+                
+                // 显示预览
+                setTimeout(() => {
+                    progressBox.style.display = 'none';
+                    showQuestionPreview(questions, uploader, subject, mode);
+                }, 500);
                 return;
             } catch (e) {
                 finishUpload(false, e.message);
@@ -3376,34 +4657,40 @@ __      _____| | ___ ___  _ __ ___   ___
             }
         }
 
+        // 普通上传和AI上传：先调用预览接口
+        previewFile = fileInput.files[0]; // 保存文件用于确认上传时使用
+        
         const formData = new FormData();
-        formData.append('uploader', uploader);
-        formData.append('subject', subject);
         formData.append('file', fileInput.files[0]);
-
-        const apiEndpoint = mode === 'ai' ? '/api/upload/ai' : '/api/upload';
+        
+        const previewEndpoint = mode === 'ai' ? '/api/upload/ai/preview' : '/api/upload/preview';
 
         try {
-            const response = await fetch(apiEndpoint, { method: 'POST', body: formData });
+            const response = await fetch(previewEndpoint, { method: 'POST', body: formData });
             
-            // 如果是普通上传，不支持流式
+            // 如果是普通上传预览
             if (mode !== 'ai') {
                 const data = await response.json();
-                if(response.ok && !data.error) {
+                if (response.ok && data.success) {
                     targetPercentVal = 100;
-                    currentPercentVal = 100; // 立即完成
+                    currentPercentVal = 100;
                     progressBar.style.width = '100%';
                     progressPercent.innerText = '100%';
-                    addLog('上传完成！', true);
-                    finishUpload(true, '上传成功！');
+                    addLog(`解析完成，共 ${data.count} 题`, true);
+                    
+                    // 显示预览
+                    setTimeout(() => {
+                        progressBox.style.display = 'none';
+                        showQuestionPreview(data.questions, uploader, subject, mode);
+                    }, 500);
                 } else {
-                    addLog('上传失败: ' + (data.error || data.message));
-                    finishUpload(false, data.error || data.message);
+                    addLog('解析失败: ' + (data.error || '未知错误'));
+                    finishUpload(false, data.error || '解析失败');
                 }
                 return;
             }
 
-            // AI 模式：处理流式响应
+            // AI 预览模式：处理流式响应
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
@@ -3422,15 +4709,21 @@ __      _____| | ___ ___  _ __ ___   ___
                         const msg = JSON.parse(line);
                         
                         if (msg.type === 'progress') {
-                            // 更新目标进度，让定时器去追赶
                             targetPercentVal = msg.percent;
-                            
                             progressStatus.innerText = '正在处理...';
-                            // 记录日志
                             addLog(msg.message, msg.percent % 10 === 0); 
-                        } else if (msg.type === 'complete') {
-                            addLog('✅ ' + msg.message, true);
-                            finishUpload(true, msg.message);
+                        } else if (msg.type === 'complete' && msg.success) {
+                            targetPercentVal = 100;
+                            currentPercentVal = 100;
+                            progressBar.style.width = '100%';
+                            progressPercent.innerText = '100%';
+                            addLog(`解析完成，共 ${msg.count} 题`, true);
+                            
+                            // 显示预览
+                            setTimeout(() => {
+                                progressBox.style.display = 'none';
+                                showQuestionPreview(msg.questions, uploader, subject, mode);
+                            }, 500);
                             return;
                         } else if (msg.type === 'error') {
                             addLog('❌ ' + msg.message);
@@ -3443,6 +4736,220 @@ __      _____| | ___ ___  _ __ ___   ___
             }
 
         } catch(e) {
+            finishUpload(false, e.message);
+        }
+    }
+    
+    // 显示预览弹窗
+    function showQuestionPreview(questions, uploader, subject, mode) {
+        previewQuestions = questions;
+        previewUploader = uploader;
+        previewSubject = subject;
+        previewMode = mode;
+        
+        const modal = document.getElementById('question-preview-modal');
+        const countEl = document.getElementById('preview-question-count');
+        const listEl = document.getElementById('preview-questions-list');
+        
+        if (!modal || !countEl || !listEl) return;
+        
+        countEl.textContent = questions.length;
+        
+        // 渲染题目列表（最多显示前20题）
+        const displayCount = Math.min(questions.length, 20);
+        listEl.innerHTML = questions.slice(0, displayCount).map((q, index) => {
+            let optionsHtml = '';
+            if (q.options && q.options.length > 0) {
+                optionsHtml = q.options.map(opt => 
+                    `<div class="question-preview-item-option">${opt.label}. ${escapeHTML(opt.content)}</div>`
+                ).join('');
+            }
+            
+            // 解析内容
+            let explanationHtml = '';
+            const rawExplanation = q.explanation || q.analysis || q.explain; // 兼容不同字段名
+            if (rawExplanation && String(rawExplanation).trim()) {
+                explanationHtml = `
+                    <div class="question-preview-item-answer">
+                        解析: ${escapeHTMLWithLineBreaks(String(rawExplanation))}
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="question-preview-item">
+                    <div class="question-preview-item-title">${index + 1}. ${escapeHTML(q.title || '无标题')}</div>
+                    <div class="question-preview-item-meta">
+                        <span>类型: ${escapeHTML(q.type || '未知')}</span>
+                    </div>
+                    ${optionsHtml ? `<div class="question-preview-item-options">${optionsHtml}</div>` : ''}
+                    <div class="question-preview-item-answer" style="margin-top: 6px; background:#f0fff4; border-left-color:#7AB876;">答案: ${escapeHTML(q.answer || '无')}</div>
+                    ${explanationHtml}
+                </div>
+            `;
+        }).join('');
+        
+        if (questions.length > 20) {
+            listEl.innerHTML += `<div style="text-align: center; padding: 15px; color: var(--text-secondary); font-size: 0.9rem;">还有 ${questions.length - 20} 道题未显示...</div>`;
+        }
+        
+        modal.classList.add('open');
+    }
+    
+    // 关闭预览弹窗
+    window.closeQuestionPreview = function(event) {
+        if (event && event.target !== event.currentTarget) return;
+        const modal = document.getElementById('question-preview-modal');
+        if (modal) {
+            modal.classList.remove('open');
+            previewQuestions = null;
+            previewUploader = '';
+            previewSubject = '';
+            previewMode = '';
+            previewFile = null;
+        }
+    }
+    
+    // 确认上传
+    window.confirmUpload = async function() {
+        if (!previewQuestions || previewQuestions.length === 0) {
+            alert('没有可上传的题目');
+            return;
+        }
+        
+        const modal = document.getElementById('question-preview-modal');
+        if (modal) {
+            modal.classList.remove('open');
+        }
+        
+        // 隐藏进度条，准备真正上传
+        const progressBox = document.getElementById('upload-progress-box');
+        const progressBar = document.getElementById('upload-progress-bar');
+        const progressStatus = document.getElementById('upload-status-text');
+        const progressPercent = document.getElementById('upload-percent');
+        const logsDiv = document.getElementById('upload-logs');
+        
+        progressBox.style.display = 'block';
+        currentPercentVal = 0;
+        targetPercentVal = 0;
+        progressBar.style.width = '0%';
+        progressPercent.innerText = '0%';
+        logsDiv.innerHTML = '';
+        addLog('开始上传到数据库...', true);
+        
+        // 启动进度动画
+        if (progressTimer) clearInterval(progressTimer);
+        progressTimer = setInterval(() => {
+            if (currentPercentVal < targetPercentVal) {
+                const diff = targetPercentVal - currentPercentVal;
+                const step = Math.max(0.5, diff * 0.1);
+                currentPercentVal = Math.min(targetPercentVal, currentPercentVal + step);
+            }
+            const pctStr = currentPercentVal.toFixed(1) + '%';
+            progressBar.style.width = pctStr;
+            progressPercent.innerText = Math.floor(currentPercentVal) + '%';
+        }, 50);
+        
+        try {
+            if (previewMode === 'json') {
+                // JSON模式：直接上传
+                targetPercentVal = 50;
+                progressStatus.innerText = '正在上传...';
+                addLog('正在上传到数据库...', true);
+                
+                const response = await fetch('/api/upload/json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        uploader: previewUploader, 
+                        subject: previewSubject, 
+                        questions: previewQuestions 
+                    })
+                });
+                const data = await response.json();
+                
+                if (response.ok && !data.error) {
+                    targetPercentVal = 100;
+                    currentPercentVal = 100;
+                    progressBar.style.width = '100%';
+                    progressPercent.innerText = '100%';
+                    addLog('上传完成！', true);
+                    finishUpload(true, data.message || '上传成功！');
+                } else {
+                    throw new Error(data.error || data.message || '上传失败');
+                }
+            } else {
+                // 普通上传或AI上传：需要重新上传文件
+                if (!previewFile) {
+                    throw new Error('文件信息丢失，请重新上传');
+                }
+                
+                const formData = new FormData();
+                formData.append('uploader', previewUploader);
+                formData.append('subject', previewSubject);
+                formData.append('file', previewFile);
+                
+                const apiEndpoint = previewMode === 'ai' ? '/api/upload/ai' : '/api/upload';
+                progressStatus.innerText = previewMode === 'ai' ? 'AI 引擎处理中...' : '正在上传...';
+                
+                if (previewMode !== 'ai') {
+                    // 普通上传
+                    targetPercentVal = 50;
+                    addLog('正在上传到数据库...', true);
+                    
+                    const response = await fetch(apiEndpoint, { method: 'POST', body: formData });
+                    const data = await response.json();
+                    
+                    if (response.ok && !data.error) {
+                        targetPercentVal = 100;
+                        currentPercentVal = 100;
+                        progressBar.style.width = '100%';
+                        progressPercent.innerText = '100%';
+                        addLog('上传完成！', true);
+                        finishUpload(true, '上传成功！');
+                    } else {
+                        throw new Error(data.error || data.message || '上传失败');
+                    }
+                } else {
+                    // AI上传：流式处理
+                    const response = await fetch(apiEndpoint, { method: 'POST', body: formData });
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+                        
+                        for (const line of lines) {
+                            if (!line.trim()) continue;
+                            try {
+                                const msg = JSON.parse(line);
+                                
+                                if (msg.type === 'progress') {
+                                    targetPercentVal = msg.percent;
+                                    progressStatus.innerText = '正在处理...';
+                                    addLog(msg.message, msg.percent % 10 === 0);
+                                } else if (msg.type === 'complete') {
+                                    addLog('✅ ' + msg.message, true);
+                                    finishUpload(true, msg.message);
+                                    return;
+                                } else if (msg.type === 'error') {
+                                    addLog('❌ ' + msg.message);
+                                    throw new Error(msg.message);
+                                }
+                            } catch (e) {
+                                console.error('解析流数据失败:', e);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {
             finishUpload(false, e.message);
         }
     }
@@ -3622,15 +5129,24 @@ __      _____| | ___ ___  _ __ ___   ___
         
         // 按钮状态
         const addWrongBtn = document.getElementById('btn-add-wrong');
+        const prevBtn = document.getElementById('btn-prev');
         if (isAnswered) {
             btn.innerText = (currentIndex === currentQuestions.length - 1) ? '查看结果' : '下一题';
             if (addWrongBtn) {
                 addWrongBtn.style.display = 'inline-block';
             }
+            // 显示上一题按钮（如果不是第一题）
+            if (prevBtn) {
+                prevBtn.style.display = currentIndex > 0 ? 'inline-block' : 'none';
+            }
         } else {
             btn.innerText = '提交本题';
             if (addWrongBtn) {
                 addWrongBtn.style.display = 'none';
+            }
+            // 答题模式下隐藏上一题按钮
+            if (prevBtn) {
+                prevBtn.style.display = 'none';
             }
         }
 
@@ -3686,6 +5202,12 @@ __      _____| | ___ ___  _ __ ___   ___
 
         html += `<div id="explanation-area"></div>`;
         container.innerHTML = html;
+
+        // 显示快捷键提示（在答题和查看模式下都显示）
+        const hints = document.getElementById('keyboard-hints');
+        if (hints) {
+            hints.style.display = 'block';
+        }
 
         // 如果已答，直接显示解析并禁用输入
         if (isAnswered) {
@@ -3780,6 +5302,18 @@ __      _____| | ___ ___  _ __ ___   ___
                 addWrongBtn.style.display = 'inline-block';
             }
             
+            // 显示上一题按钮（如果不是第一题）
+            const prevBtn = document.getElementById('btn-prev');
+            if (prevBtn) {
+                prevBtn.style.display = currentIndex > 0 ? 'inline-block' : 'none';
+            }
+            
+            // 更新快捷键提示显示状态
+            const hints = document.getElementById('keyboard-hints');
+            if (hints) {
+                hints.style.display = 'block';
+            }
+            
             renderNavGrid();
             if (!isChallengeMode) {
                 saveProgress();
@@ -3789,6 +5323,12 @@ __      _____| | ___ ___  _ __ ___   ___
             const addWrongBtn = document.getElementById('btn-add-wrong');
             if (addWrongBtn) {
                 addWrongBtn.style.display = 'none';
+            }
+            
+            // 更新快捷键提示显示状态
+            const hints = document.getElementById('keyboard-hints');
+            if (hints) {
+                hints.style.display = 'block';
             }
             
             if(currentIndex < currentQuestions.length - 1) {
@@ -3802,15 +5342,24 @@ __      _____| | ___ ___  _ __ ___   ___
             }
         }
     }
+    
+    // 上一题功能
+    window.goToPreviousQuestion = function() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            if (!isChallengeMode) {
+                saveProgress();
+            }
+            loadQuestion();
+        }
+    }
 
     function showFeedback(isCorrect, rightAns, userAns) {
         const area = document.getElementById('explanation-area');
         const color = isCorrect ? '#48bb78' : '#f56565';
         
-        // 获取当前题目对象
         const q = currentQuestions[currentIndex];
         
-        // 判断题：规范化显示答案
         let displayRightAns = rightAns;
         let displayUserAns = userAns;
         if (q.type === '判断题' || rightAns === '正确' || rightAns === '错误' || 
@@ -3819,23 +5368,35 @@ __      _____| | ___ ___  _ __ ___   ___
             displayUserAns = normalizeJudgementAnswer(userAns);
         }
         
-        // 选项染色逻辑
         document.querySelectorAll('input[name="q"]').forEach(input => {
             const label = input.parentElement;
             const val = input.value;
             
-            // 确保 rightAns 和 userAns 是字符串
-            const safeRightAns = String(rightAns || '');
-            const safeUserAns = String(userAns || '');
-
-            // 1. 如果该选项是正确答案的一部分，标记为绿色 (correct)
-            if (safeRightAns.includes(val)) {
-                label.classList.add('correct');
-            }
+            const isJudgement = q.type === '判断题' || rightAns === '正确' || rightAns === '错误' || 
+                               rightAns === '对' || rightAns === '错' || rightAns === '是' || rightAns === '否';
             
-            // 2. 如果用户选了该选项，但它不是正确答案，标记为红色 (wrong)
-            if (safeUserAns.includes(val) && !safeRightAns.includes(val)) {
-                label.classList.add('wrong');
+            if (isJudgement) {
+                const normalizedRightAns = normalizeJudgementAnswer(rightAns);
+                const normalizedUserAns = normalizeJudgementAnswer(userAns);
+                
+                if (normalizedRightAns === val) {
+                    label.classList.add('correct');
+                }
+                
+                if (normalizedUserAns === val && normalizedRightAns !== val) {
+                    label.classList.add('wrong');
+                }
+            } else {
+                const safeRightAns = String(rightAns || '');
+                const safeUserAns = String(userAns || '');
+
+                if (safeRightAns.includes(val)) {
+                    label.classList.add('correct');
+                }
+                
+                if (safeUserAns.includes(val) && !safeRightAns.includes(val)) {
+                    label.classList.add('wrong');
+                }
             }
             
             input.disabled = true;
@@ -3851,6 +5412,11 @@ __      _____| | ___ ___  _ __ ___   ___
                 <button class="ai-btn" onclick="askAI(this)">✨问AI</button>
             </div>
         `;
+        
+        // 如果答错了且开启了自动添加错题本，则自动添加
+        if (!isCorrect && getAutoAddWrongBookSetting()) {
+            autoAddToWrongBook(q, userAns);
+        }
     }
 
     async function askAI(btn) {
@@ -3860,7 +5426,7 @@ __      _____| | ___ ___  _ __ ___   ___
         // 界面状态更新
         btn.disabled = true;
         btn.classList.add('thinking'); // 添加动画类
-        btn.innerHTML = '✨ 正在思考...';
+        btn.innerHTML = '<span class="thinking-icon">✨</span> <span class="thinking-text">正在思考</span><span class="thinking-dots"><span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span></span>';
         
         const feedbackBox = btn.parentElement;
         
@@ -3902,6 +5468,41 @@ __      _____| | ___ ___  _ __ ___   ___
         }
     }
 
+    // 自动添加错题本（带重复检查）
+    function autoAddToWrongBook(q, userAns) {
+        if (!q) return;
+        
+        const wrongQuestions = JSON.parse(localStorage.getItem('wrongbook') || '[]');
+        
+        // 检查是否已经存在相同的题目（通过题目标题和答案来判断）
+        const isDuplicate = wrongQuestions.some(wq => 
+            wq.title === q.title && 
+            wq.answer === q.answer &&
+            wq.type === (q.type || '未知')
+        );
+        
+        if (isDuplicate) {
+            // 如果已存在，不重复添加，静默处理
+            return;
+        }
+        
+        const questionData = {
+            id: Date.now() + Math.random(),
+            title: q.title,
+            type: q.type || '未知',
+            options: q.options || [],
+            answer: q.answer,
+            explanation: q.explanation || '',
+            userAnswer: userAns || '',
+            addedAt: new Date().toISOString()
+        };
+        
+        wrongQuestions.push(questionData);
+        localStorage.setItem('wrongbook', JSON.stringify(wrongQuestions));
+        
+        // 静默添加，不显示提示（因为是自动的）
+    }
+    
     function addToWrongBook() {
         if (!currentQuestions || currentIndex >= currentQuestions.length) return;
         
@@ -3909,6 +5510,18 @@ __      _____| | ___ ___  _ __ ___   ___
         if (!q) return;
         
         const wrongQuestions = JSON.parse(localStorage.getItem('wrongbook') || '[]');
+        
+        // 检查是否已经存在相同的题目
+        const isDuplicate = wrongQuestions.some(wq => 
+            wq.title === q.title && 
+            wq.answer === q.answer &&
+            wq.type === (q.type || '未知')
+        );
+        
+        if (isDuplicate) {
+            showToast('该题目已在错题本中');
+            return;
+        }
         
         const questionData = {
             id: Date.now() + Math.random(),
@@ -3997,6 +5610,35 @@ __      _____| | ___ ___  _ __ ___   ___
         
         updateDeleteSelectedButton();
         updateSelectAllCheckbox();
+        
+        // 初始化自动添加错题本开关状态
+        initAutoAddWrongBookToggle();
+    }
+    
+    // 初始化自动添加错题本开关
+    function initAutoAddWrongBookToggle() {
+        const toggle = document.getElementById('auto-add-wrongbook-toggle');
+        if (toggle) {
+            const isEnabled = getAutoAddWrongBookSetting();
+            toggle.checked = isEnabled;
+        }
+    }
+    
+    // 获取自动添加错题本配置
+    function getAutoAddWrongBookSetting() {
+        const saved = localStorage.getItem('auto_add_wrongbook');
+        // 默认关闭，如果未设置则返回 false
+        return saved === 'true';
+    }
+    
+    // 切换自动添加错题本配置
+    function toggleAutoAddWrongBook() {
+        const toggle = document.getElementById('auto-add-wrongbook-toggle');
+        if (toggle) {
+            const isEnabled = toggle.checked;
+            localStorage.setItem('auto_add_wrongbook', isEnabled ? 'true' : 'false');
+            showToast(isEnabled ? '已开启自动添加错题本' : '已关闭自动添加错题本', 2000);
+        }
     }
     
     function deleteWrongQuestion(questionId) {
