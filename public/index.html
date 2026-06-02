@@ -303,6 +303,60 @@ __      _____| | ___ ___  _ __ ___   ___
             opacity: 1;
         }
 
+        /* 题库加载动画 */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 9000;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading-overlay.active {
+            display: flex;
+        }
+        .loading-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 40px 48px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            animation: loadingFadeIn 0.3s ease;
+        }
+        @keyframes loadingFadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 20px auto;
+            border: 4px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: loadingSpin 0.7s linear infinite;
+        }
+        @keyframes loadingSpin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-label {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: 0.5px;
+        }
+        .loading-sub {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        body.dark-mode .loading-spinner { border-color: #4a5568; border-top-color: #a78bfa; }
+
         .question-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -2182,6 +2236,15 @@ __      _____| | ___ ___  _ __ ___   ___
     <!-- 3. 答题页 -->
     <div id="view-quiz" class="hidden">
         <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+
+    <!-- 题库加载动画 -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <div class="loading-label">正在加载题目...</div>
+            <div class="loading-sub">请稍候</div>
+        </div>
+    </div>
         <button class="sidebar-toggle" onclick="toggleSidebar(true)">
             <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
         </button>
@@ -4075,18 +4138,20 @@ __      _____| | ___ ___  _ __ ___   ___
     async function startChallenge() {
         const selectedExams = Array.from(document.querySelectorAll('#challenge-exam-list input:checked'));
         if (selectedExams.length === 0) return alert('请至少选择一个题库');
-        
+
         // 获取用户选择的题型
         const selectedTypes = Array.from(document.querySelectorAll('input[name="challenge-types"]:checked')).map(cb => cb.value);
         if (selectedTypes.length === 0) return alert('请至少选择一种题型');
-        
+
         const count = parseInt(document.getElementById('challenge-count').value);
         if (isNaN(count) || count <= 0) return alert('请输入有效的题目数量');
+
+        showLoadingOverlay('正在准备挑战题目...', '从题库中随机抽取');
 
         try {
             console.log('正在准备挑战题目...');
             let allAvailableQuestions = [];
-            
+
             // 逐个获取所选题库的题目
             for (const input of selectedExams) {
                 const res = await fetch(`/api/questions?exam_id=${input.value}`);
@@ -4109,7 +4174,7 @@ __      _____| | ___ ___  _ __ ___   ___
             // 随机洗牌并截取
             allAvailableQuestions.sort(() => Math.random() - 0.5);
             currentQuestions = allAvailableQuestions.slice(0, count);
-            
+
             // 初始化挑战状态
             isChallengeMode = true;
             currentIndex = 0;
@@ -4117,24 +4182,26 @@ __      _____| | ___ ___  _ __ ___   ___
             answeredIndices.clear();
             userAnswersMap = {};
             questionStatusMap = {};
-            
+
             // 保存挑战配置信息（用于记录）
             challengeRecord = {
                 selectedTypes: selectedTypes,
                 subjectNames: selectedExams.map(i => i.dataset.name).join(', ')
             };
-            
+
             // 更新 UI 标识
             document.getElementById('quiz-mode-tag').style.display = 'block';
             document.getElementById('quiz-subject-title').innerText = `随机挑战 (${currentQuestions.length}题)`;
-            
+
             toggleView('quiz');
             document.getElementById('progress-container').style.display = 'flex';
             renderNavGrid();
             loadQuestion();
-            
+
         } catch (e) {
             alert('开启挑战失败: ' + e.message);
+        } finally {
+            hideLoadingOverlay();
         }
     }
 
@@ -5200,17 +5267,33 @@ __      _____| | ___ ___  _ __ ___   ___
         return result.join('\n');
     }
 
+    function showLoadingOverlay(label, sub) {
+        const el = document.getElementById('loading-overlay');
+        if (el) {
+            el.querySelector('.loading-label').textContent = label || '正在加载题目...';
+            el.querySelector('.loading-sub').textContent = sub || '请稍候';
+            el.classList.add('active');
+        }
+    }
+
+    function hideLoadingOverlay() {
+        const el = document.getElementById('loading-overlay');
+        if (el) el.classList.remove('active');
+    }
+
     async function startExam(examId, subjectName) {
         currentExamId = examId;
         document.getElementById('quiz-subject-title').innerText = subjectName;
-        
+
+        showLoadingOverlay('正在加载题目...', subjectName);
+
         try {
             const res = await fetch(`/api/questions?exam_id=${examId}`);
             const result = await res.json();
-            
+
             if(result.data && result.data.length > 0) {
                 currentQuestions = result.data;
-                
+
                 // 尝试加载缓存
                 const hasCache = loadProgress();
                 if (!hasCache) {
@@ -5224,7 +5307,7 @@ __      _____| | ___ ___  _ __ ___   ___
 
                 toggleView('quiz');
                 document.getElementById('progress-container').style.display = 'flex';
-                
+
                 // 渲染
                 renderNavGrid();
                 loadQuestion();
@@ -5234,6 +5317,8 @@ __      _____| | ___ ___  _ __ ___   ___
         } catch(e) {
             alert('加载题目出错: ' + e.message);
             console.error(e);
+        } finally {
+            hideLoadingOverlay();
         }
     }
 
