@@ -6,7 +6,7 @@ package-lock.json
 .env
 .env.local
 config.local.js
-
+.claude/
 # 上传文件
 uploads/*
 !uploads/.gitkeep

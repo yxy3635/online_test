@@ -671,6 +671,92 @@ app.get('/api/backgrounds', (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`在线答题系统已启动: http://localhost:${port}`);
+// 获取所有可用的 IP 地址
+function getAllIPs() {
+    const interfaces = os.networkInterfaces();
+    const ips = [];
+    
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                const addr = iface.address;
+                // 判断是否为真正的局域网 IP（排除 VPN 和虚拟网卡）
+                const isLAN = (addr.startsWith('192.168.') && !name.toLowerCase().includes('vmware') && !name.toLowerCase().includes('virtual')) || 
+                             (addr.startsWith('10.') && !name.toLowerCase().includes('vpn') && !name.toLowerCase().includes('radmin')) ||
+                             (addr.startsWith('172.16.') || addr.startsWith('172.17.') || addr.startsWith('172.18.') || 
+                              addr.startsWith('172.19.') || addr.startsWith('172.20.') || addr.startsWith('172.21.') ||
+                              addr.startsWith('172.22.') || addr.startsWith('172.23.') || addr.startsWith('172.24.') ||
+                              addr.startsWith('172.25.') || addr.startsWith('172.26.') || addr.startsWith('172.27.') ||
+                              addr.startsWith('172.28.') || addr.startsWith('172.29.') || addr.startsWith('172.30.') ||
+                              addr.startsWith('172.31.'));
+                
+                ips.push({
+                    name: name,
+                    address: addr,
+                    isLAN: isLAN,
+                    isVPN: name.toLowerCase().includes('vpn') || name.toLowerCase().includes('radmin'),
+                    isVirtual: name.toLowerCase().includes('vmware') || name.toLowerCase().includes('virtual')
+                });
+            }
+        }
+    }
+    return ips;
+}
+
+// 获取首选局域网 IP（优先选择真正的局域网 IP，排除 VPN 和虚拟网卡）
+function getPreferredIP() {
+    const ips = getAllIPs();
+    
+    // 优先选择真正的局域网 IP（排除 VPN 和虚拟网卡）
+    const lanIP = ips.find(ip => ip.isLAN && !ip.isVPN && !ip.isVirtual);
+    if (lanIP) {
+        return lanIP.address;
+    }
+    
+    // 其次选择局域网 IP（即使可能是虚拟的）
+    const anyLanIP = ips.find(ip => ip.isLAN);
+    if (anyLanIP) {
+        return anyLanIP.address;
+    }
+    
+    // 最后选择第一个非内部 IP
+    if (ips.length > 0) {
+        return ips[0].address;
+    }
+    
+    return 'localhost';
+}
+
+const allIPs = getAllIPs();
+const preferredIP = getPreferredIP();
+
+app.listen(port, '0.0.0.0', () => {
+    console.log('\n========================================');
+    console.log('在线答题系统已启动（局域网模式）！');
+    console.log('========================================');
+    console.log(`本机访问: http://localhost:${port}`);
+    console.log('\n可用的网络接口：');
+    
+    if (allIPs.length === 0) {
+        console.log('  ⚠️  未找到可用的网络接口');
+    } else {
+        allIPs.forEach((ip, index) => {
+            const isPreferred = ip.address === preferredIP;
+            const marker = isPreferred ? '⭐ (推荐)' : '';
+            const type = ip.isLAN ? '[局域网]' : '[其他]';
+            console.log(`  ${index + 1}. ${ip.name}: ${ip.address} ${type} ${marker}`);
+        });
+    }
+    
+    console.log(`\n首选访问地址: http://${preferredIP}:${port}`);
+    console.log('========================================');
+    console.log('⚠️  重要提示：');
+    console.log('1. 确保 Windows 防火墙已允许端口 ' + port + ' 的访问');
+    console.log('   方法：Windows 设置 > 隐私和安全性 > Windows 安全中心 > 防火墙和网络保护');
+    console.log('   或运行命令：netsh advfirewall firewall add rule name="Node.js Server" dir=in action=allow protocol=TCP localport=' + port);
+    console.log('2. 如果无法访问，请尝试使用其他网络接口的 IP 地址');
+    console.log('3. 在同一局域网内的其他设备上使用上述 IP 地址访问');
+    console.log('4. 确保服务器和客户端在同一局域网内（不是 VPN 网络）');
+    console.log('========================================\n');
 });
+
