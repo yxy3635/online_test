@@ -800,7 +800,152 @@ __      _____| | ___ ___  _ __ ___   ___
 
         .hidden { display: none !important; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
+
+        /* ===== 连续答对 streak 提示 ===== */
+        .streak-toast {
+            --streak-scale: 1;
+            --glow-color: rgba(16,185,129,0.7);
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-140px);
+            z-index: 6000;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 18px 40px;
+            border-radius: 20px;
+            font-weight: 900;
+            white-space: nowrap;
+            opacity: 0;
+            transition: none;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            border: 1.5px solid rgba(255,255,255,0.25);
+        }
+        /* 入场: 砸下来 + 弹跳 */
+        .streak-toast.enter {
+            animation: streakBounceIn 0.55s cubic-bezier(0.22, 0.94, 0.36, 1.15) forwards;
+        }
+        @keyframes streakBounceIn {
+            0%   { transform: translateX(-50%) translateY(-140px) scale(0.3); opacity: 0; }
+            55%  { transform: translateX(-50%) translateY(10px) scale(calc(var(--streak-scale, 1) * 1.06)); opacity: 1; }
+            72%  { transform: translateX(-50%) translateY(-6px) scale(calc(var(--streak-scale, 1) * 0.96)); }
+            85%  { transform: translateX(-50%) translateY(2px) scale(calc(var(--streak-scale, 1) * 1.02)); }
+            100% { transform: translateX(-50%) translateY(0) scale(var(--streak-scale, 1)); opacity: 1; }
+        }
+        /* 出场: 甩上去 */
+        .streak-toast.exit {
+            animation: streakFlingOut 0.35s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+        }
+        @keyframes streakFlingOut {
+            0%   { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+            40%  { transform: translateX(-50%) translateY(-20px) scale(1.04); opacity: 0.9; }
+            100% { transform: translateX(-50%) translateY(-160px) scale(0.5); opacity: 0; }
+        }
+
+        /* 中心大数字 */
+        .streak-toast .st-main {
+            font-size: 2.2rem;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        }
+        /* 副标题 */
+        .streak-toast .st-sub {
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            opacity: 0.85;
+            text-shadow: 0 1px 6px rgba(0,0,0,0.2);
+        }
+        /* 环形计数徽章（右侧浮动） */
+        .streak-toast .st-badge {
+            position: absolute;
+            top: -14px;
+            right: -14px;
+            min-width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 900;
+            background: rgba(0,0,0,0.35);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.4);
+            backdrop-filter: blur(6px);
+        }
+
+        /* 答错断开提示 */
+        .streak-toast.break {
+            animation: streakBreakShake 0.5s ease-out forwards;
+        }
+        @keyframes streakBreakShake {
+            0%   { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+            12%  { transform: translateX(calc(-50% - 16px)) translateY(0) scale(1.04); }
+            25%  { transform: translateX(calc(-50% + 14px)) translateY(0) scale(0.96); }
+            38%  { transform: translateX(calc(-50% - 10px)) translateY(0) scale(1.02); }
+            50%  { transform: translateX(calc(-50% + 6px)) translateY(0) scale(0.98); }
+            62%  { transform: translateX(-50%) translateY(0) scale(1); opacity: 0.8; }
+            100% { transform: translateX(-50%) translateY(-80px) scale(0.6); opacity: 0; }
+        }
+
+        /* 背景圆环脉冲 */
+        .streak-toast::before {
+            content: '';
+            position: absolute;
+            inset: -10px;
+            border-radius: 28px;
+            z-index: -1;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .streak-toast.ring-pulse::before {
+            animation: streakRing 0.8s ease-out forwards;
+        }
+        @keyframes streakRing {
+            0%   { box-shadow: 0 0 0 0 var(--glow-color, rgba(16,185,129,0.7)); opacity: 0.7; }
+            100% { box-shadow: 0 0 0 32px transparent; opacity: 0; }
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            .streak-toast {
+                top: 12px;
+                padding: 14px 28px;
+                border-radius: 16px;
+            }
+            .streak-toast .st-main {
+                font-size: 1.6rem;
+            }
+            .streak-toast .st-sub {
+                font-size: 0.75rem;
+                letter-spacing: 2px;
+            }
+            .streak-toast .st-badge {
+                top: -10px;
+                right: -10px;
+                min-width: 28px;
+                height: 28px;
+                font-size: 0.8rem;
+            }
+            @keyframes streakBounceIn {
+                0%   { transform: translateX(-50%) translateY(-120px) scale(0.3); opacity: 0; }
+                55%  { transform: translateX(-50%) translateY(8px) scale(calc(var(--streak-scale, 1) * 1.05)); opacity: 1; }
+                72%  { transform: translateX(-50%) translateY(-4px) scale(calc(var(--streak-scale, 1) * 0.97)); }
+                85%  { transform: translateX(-50%) translateY(1px) scale(calc(var(--streak-scale, 1) * 1.01)); }
+                100% { transform: translateX(-50%) translateY(0) scale(var(--streak-scale, 1)); opacity: 1; }
+            }
+        }
+
         .footer { text-align: center; color: var(--text-secondary); font-size: 0.8rem; padding: 20px; }
 
         @media (max-width: 600px) {
@@ -2235,6 +2380,13 @@ __      _____| | ___ ___  _ __ ___   ___
 
     <!-- 3. 答题页 -->
     <div id="view-quiz" class="hidden">
+        <!-- 连续答对提示 -->
+        <div class="streak-toast" id="streak-toast">
+            <div class="st-main" id="st-main"></div>
+            <div class="st-sub" id="st-sub"></div>
+            <div class="st-badge" id="st-badge"></div>
+        </div>
+
         <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
 
     <!-- 题库加载动画 -->
@@ -3148,6 +3300,7 @@ __      _____| | ___ ___  _ __ ___   ___
     let answeredIndices = new Set(); // 记录已作答的题目索引
     let userAnswersMap = {}; // 记录每一题的用户答案
     let questionStatusMap = {}; // 记录每一题的对错状态 { index: 'correct'|'wrong' }
+    let consecutiveCorrect = 0; // 连续答对计数
     let isChallengeMode = false; // 是否为挑战模式
     let challengeRecord = null; // 当前挑战记录
 
@@ -4182,6 +4335,8 @@ __      _____| | ___ ___  _ __ ___   ___
             answeredIndices.clear();
             userAnswersMap = {};
             questionStatusMap = {};
+            consecutiveCorrect = 0;
+            resetStreakUI();
 
             // 保存挑战配置信息（用于记录）
             challengeRecord = {
@@ -4276,7 +4431,9 @@ __      _____| | ___ ___  _ __ ___   ___
         };
         
         currentIndex = 0;
-        
+        consecutiveCorrect = 0;
+        resetStreakUI();
+
         document.getElementById('quiz-mode-tag').style.display = 'block';
         document.getElementById('quiz-subject-title').innerText = `历史回顾: ${new Date(rec.date).toLocaleDateString()}`;
         
@@ -4291,6 +4448,8 @@ __      _____| | ___ ___  _ __ ___   ___
         if (isChallengeMode && answeredIndices.size < currentQuestions.length) {
             if (!confirm('挑战尚未完成，退出将不会保存记录。确定退出吗？')) return;
         }
+        consecutiveCorrect = 0;
+        resetStreakUI();
         toggleView('home');
         isChallengeMode = false;
         challengeRecord = null;
@@ -4328,6 +4487,7 @@ __      _____| | ___ ___  _ __ ___   ___
             answeredIndices = new Set(data.answeredIndices || []);
             userAnswersMap = data.userAnswersMap || {};
             questionStatusMap = data.questionStatusMap || {};
+            consecutiveCorrect = 0; // 从缓存恢复时重置 streak
 
             // 关键修复：防止索引越界 (比如缓存了第10题，但新试卷只有4题)
             if (currentIndex >= currentQuestions.length) {
@@ -4354,6 +4514,12 @@ __      _____| | ___ ___  _ __ ___   ___
             if (el) el.classList.add('hidden');
         });
         document.getElementById('progress-container').style.display = 'none';
+
+        // 离开答题页时隐藏 streak
+        if (viewId !== 'quiz') {
+            consecutiveCorrect = 0;
+            resetStreakUI();
+        }
 
         if (viewId !== 'dashboard') {
             if (dashboardTimer) {
@@ -5303,6 +5469,8 @@ __      _____| | ___ ___  _ __ ___   ___
                     answeredIndices.clear();
                     userAnswersMap = {};
                     questionStatusMap = {};
+                    consecutiveCorrect = 0;
+                    resetStreakUI();
                 }
 
                 toggleView('quiz');
@@ -5514,6 +5682,147 @@ __      _____| | ___ ___  _ __ ___   ___
         }
     }
 
+    // ============ 连续答对 Streak 系统 ============
+    // 每个连续答对数都有唯一的配色和文案
+    const STREAK_THEMES = [
+        // [渐变起, 渐变止, 主文字, 副文字, 辉光色]
+        ['#10b981', '#047857', '答对了', 'Correct', 'rgba(16,185,129,0.7)'],
+        ['#14b8a6', '#0f766e', '连对 ×2', 'Double', 'rgba(20,184,166,0.7)'],
+        ['#06b6d4', '#0e7490', '三连对', 'Triple', 'rgba(6,182,212,0.7)'],
+        ['#0ea5e9', '#0369a1', '势不可挡', 'Unstoppable', 'rgba(14,165,233,0.7)'],
+        ['#3b82f6', '#1d4ed8', '五连绝世', 'Brilliant', 'rgba(59,130,246,0.7)'],
+        ['#6366f1', '#4338ca', '六六大顺', 'Awesome', 'rgba(99,102,241,0.7)'],
+        ['#8b5cf6', '#6d28d9', '七星连珠', 'Stellar', 'rgba(139,92,246,0.7)'],
+        ['#a855f7', '#7e22ce', '八面威风', 'Dominant', 'rgba(168,85,247,0.7)'],
+        ['#d946ef', '#a21caf', '九九归一', 'Masterful', 'rgba(217,70,239,0.7)'],
+        ['#ec4899', '#be185d', '十全十美', 'Perfect', 'rgba(236,72,153,0.7)'],
+        ['#f43f5e', '#be123c', '登峰造极', 'Peak', 'rgba(244,63,94,0.7)'],
+        ['#ef4444', '#b91c1c', '所向披靡', 'Invincible', 'rgba(239,68,68,0.7)'],
+        ['#f97316', '#c2410c', '无懈可击', 'Flawless', 'rgba(249,115,22,0.7)'],
+        ['#f59e0b', '#b45309', '炉火纯青', 'Refined', 'rgba(245,158,11,0.7)'],
+        ['#eab308', '#a16207', '出神入化', 'Transcendent', 'rgba(234,179,8,0.7)'],
+        ['#84cc16', '#4d7c0f', '神乎其技', 'Godlike', 'rgba(132,204,22,0.7)'],
+        ['#22c55e', '#15803d', '天外飞仙', 'Ethereal', 'rgba(34,197,94,0.7)'],
+        ['#10b981', '#047857', '超凡入圣', 'Ascended', 'rgba(16,185,129,0.7)'],
+        ['#06b6d4', '#0e7490', '独步天下', 'Unrivaled', 'rgba(6,182,212,0.7)'],
+        ['#3b82f6', '#1d4ed8', '冠绝群伦', 'Supreme', 'rgba(59,130,246,0.7)'],
+    ];
+
+    let streakDismissTimer = null;
+
+    function getStreakTheme(n) {
+        // n >= 1, 返回对应主题（超出数组则循环 + 升级）
+        const idx = (n - 1) % STREAK_THEMES.length;
+        const cycle = Math.floor((n - 1) / STREAK_THEMES.length);
+        const t = STREAK_THEMES[idx];
+        // 每循环一轮，副标题加上 " +" 标记
+        let sub = t[3];
+        if (cycle >= 1) sub = 'Lv.' + (cycle + 1) + ' ' + sub;
+        return { gradFrom: t[0], gradTo: t[1], main: t[2], sub: sub, glow: t[4], idx: idx, cycle: cycle };
+    }
+
+    function showStreakToast(n) {
+        const el = document.getElementById('streak-toast');
+        const mainEl = document.getElementById('st-main');
+        const subEl = document.getElementById('st-sub');
+        const badgeEl = document.getElementById('st-badge');
+        if (!el || !mainEl || !subEl || !badgeEl) return;
+
+        // 清除之前的定时器和动画
+        if (streakDismissTimer) { clearTimeout(streakDismissTimer); streakDismissTimer = null; }
+        el.classList.remove('enter', 'exit', 'break', 'ring-pulse');
+        void el.offsetWidth; // 强制回流
+
+        const theme = getStreakTheme(n);
+
+        // 设置内容
+        mainEl.textContent = theme.main;
+        subEl.textContent = theme.sub;
+        badgeEl.textContent = '×' + n;
+
+        // 设置颜色（按次数增大渐变角度，产生微妙差异）
+        const angle = 130 + (n * 7) % 50; // 130° ~ 179°
+        el.style.background = `linear-gradient(${angle}deg, ${theme.gradFrom}, ${theme.gradTo})`;
+        el.style.color = '#fff';
+        el.style.setProperty('--glow-color', theme.glow);
+
+        // 辉光随连对数增强
+        const glowSize = Math.min(28 + n * 3, 80);
+        const glowAlpha = Math.min(0.5 + n * 0.04, 0.95);
+        el.style.boxShadow = `
+            0 ${Math.min(8 + n, 30)}px ${glowSize}px ${theme.glow.replace('0.7', String(glowAlpha))},
+            0 0 ${glowSize * 2}px ${theme.glow.replace('0.7', String(glowAlpha * 0.5))}
+        `;
+
+        // 高连对时放大
+        const scale = Math.min(1 + n * 0.012, 1.35);
+        el.style.setProperty('--streak-scale', String(scale));
+
+        // 播放入场 + 环形脉冲
+        el.classList.add('enter', 'ring-pulse');
+
+        // 1 秒后出场
+        streakDismissTimer = setTimeout(() => {
+            el.classList.remove('enter', 'ring-pulse');
+            el.classList.add('exit');
+            streakDismissTimer = null;
+        }, 1000);
+    }
+
+    function showStreakBreak(wasN) {
+        const el = document.getElementById('streak-toast');
+        const mainEl = document.getElementById('st-main');
+        const subEl = document.getElementById('st-sub');
+        const badgeEl = document.getElementById('st-badge');
+        if (!el || !mainEl || !subEl || !badgeEl) return;
+
+        if (streakDismissTimer) { clearTimeout(streakDismissTimer); streakDismissTimer = null; }
+        el.classList.remove('enter', 'exit', 'break', 'ring-pulse');
+        void el.offsetWidth;
+
+        mainEl.textContent = '连对中断';
+        subEl.textContent = '×' + wasN + ' → 重新开始';
+        badgeEl.textContent = '!';
+        el.style.background = 'linear-gradient(135deg, #6b7280, #374151)';
+        el.style.color = '#fff';
+        el.style.boxShadow = '0 8px 32px rgba(107,114,128,0.5)';
+
+        el.classList.add('break');
+
+        // 0.6s 后消失
+        streakDismissTimer = setTimeout(() => {
+            el.classList.remove('break');
+            el.classList.add('exit');
+            streakDismissTimer = null;
+        }, 600);
+    }
+
+    function hideStreakImmediate() {
+        const el = document.getElementById('streak-toast');
+        if (!el) return;
+        if (streakDismissTimer) { clearTimeout(streakDismissTimer); streakDismissTimer = null; }
+        el.classList.remove('enter', 'exit', 'break', 'ring-pulse');
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(-50%) translateY(-140px)';
+    }
+
+    function updateStreak(isCorrect) {
+        if (isCorrect) {
+            consecutiveCorrect++;
+            showStreakToast(consecutiveCorrect);
+        } else {
+            const wasN = consecutiveCorrect;
+            consecutiveCorrect = 0;
+            if (wasN > 0) {
+                showStreakBreak(wasN);
+            }
+        }
+    }
+
+    function resetStreakUI() {
+        hideStreakImmediate();
+    }
+
     window.handleAction = function() {
         const btn = document.getElementById('btn-action');
         const q = currentQuestions[currentIndex];
@@ -5547,6 +5856,9 @@ __      _____| | ___ ___  _ __ ___   ___
             }
             
             if(isCorrect) score++;
+
+            // 更新连续答对 streak
+            updateStreak(isCorrect);
 
             // 标记为已作答
             answeredIndices.add(currentIndex);
@@ -6033,20 +6345,22 @@ __      _____| | ___ ___  _ __ ___   ___
         answeredIndices = new Set();
         userAnswersMap = {};
         questionStatusMap = {};
+        consecutiveCorrect = 0;
+        resetStreakUI();
         currentExamId = null;
         isChallengeMode = false;
-        
+
         toggleView('quiz');
         loadQuestion();
     }
-    
+
     function startAllWrongQuestions() {
         const wrongQuestions = JSON.parse(localStorage.getItem('wrongbook') || '[]');
         if (wrongQuestions.length === 0) {
             alert('错题本为空');
             return;
         }
-        
+
         currentQuestions = wrongQuestions.map(q => ({
             title: q.title,
             type: q.type,
@@ -6054,12 +6368,14 @@ __      _____| | ___ ___  _ __ ___   ___
             answer: q.answer,
             explanation: q.explanation
         }));
-        
+
         currentIndex = 0;
         score = 0;
         answeredIndices = new Set();
         userAnswersMap = {};
         questionStatusMap = {};
+        consecutiveCorrect = 0;
+        resetStreakUI();
         currentExamId = null;
         isChallengeMode = false;
         
@@ -6086,7 +6402,9 @@ __      _____| | ___ ___  _ __ ___   ___
         answeredIndices.clear();
         userAnswersMap = {};
         questionStatusMap = {};
-        
+        consecutiveCorrect = 0;
+        resetStreakUI();
+
         toggleView('quiz');
         document.getElementById('progress-container').style.display = 'flex';
         renderNavGrid();
