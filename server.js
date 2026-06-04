@@ -671,6 +671,10 @@ app.get('/api/backgrounds', (req, res) => {
     }
 });
 
+// 注册管理员路由
+const { registerAdminRoutes } = require('./lib/adminRoutes');
+registerAdminRoutes(app);
+
 app.listen(port, () => {
     console.log(`在线答题系统已启动: http://localhost:${port}`);
 });

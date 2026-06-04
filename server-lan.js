@@ -730,6 +730,10 @@ function getPreferredIP() {
 const allIPs = getAllIPs();
 const preferredIP = getPreferredIP();
 
+// 注册管理员路由
+const { registerAdminRoutes } = require('./lib/adminRoutes');
+registerAdminRoutes(app);
+
 app.listen(port, '0.0.0.0', () => {
     console.log('\n========================================');
     console.log('在线答题系统已启动（局域网模式）！');

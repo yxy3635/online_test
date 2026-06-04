@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - 千纸雏鸢题库系统</title>
+    <style>
+        :root {
+            --primary: #3d8b5f; --primary-dark: #2a6b44;
+            --text: #2a362e; --text-muted: #5a7a65;
+            --bg: #d4e5d8; --card: #f2f8f3; --border: #c8d9cc;
+            --danger: #e53e3e; --radius: 6px;
+            --sidebar-w: 200px;
+            --transition: 0.2s ease;
+        }
+        body.dark-mode {
+            --text: #d0dcd4; --text-muted: #8aa892;
+            --bg: #19241d; --card: #223a2a; --border: #2a3d2e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+        }
+        .hidden { display: none !important; }
+
+        /* ---- Layout ---- */
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: var(--sidebar-w); flex-shrink: 0;
+            background: var(--card); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; padding: 20px 0;
+            transition: transform var(--transition);
+            z-index: 100;
+        }
+        .sidebar-logo {
+            font-weight: 700; font-size: 1rem; color: var(--primary);
+            padding: 0 20px 16px; margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sidebar a {
+            display: block; padding: 10px 20px; font-size: 0.9rem;
+            color: var(--text-muted); text-decoration: none; cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all var(--transition);
+        }
+        .sidebar a:hover { color: var(--primary); background: rgba(61,139,95,0.05); }
+        .sidebar a.active { color: var(--primary); border-left-color: var(--primary); background: rgba(61,139,95,0.07); font-weight: 600; }
+        .sidebar-footer { margin-top: auto; padding: 12px 20px; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); }
+        .sidebar-footer a { display: inline; padding: 0; border: none; color: var(--danger); font-size: 0.8rem; }
+        .sidebar-footer a:hover { background: none; opacity: 0.8; }
+
+        .main {
+            flex: 1; padding: 28px 32px; overflow-y: auto;
+            animation: fadeIn 0.25s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ---- Mobile ---- */
+        .menu-btn {
+            display: none; position: fixed; top: 10px; left: 10px; z-index: 200;
+            width: 38px; height: 38px; border: 1px solid var(--border);
+            border-radius: var(--radius); background: var(--card); cursor: pointer;
+            align-items: center; justify-content: center; font-size: 1.2rem; color: var(--text);
+        }
+        @media (max-width: 640px) {
+            .menu-btn { display: flex; }
+            .sidebar { position: fixed; top: 0; left: 0; bottom: 0; transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.15); }
+            .main { padding: 50px 12px 16px; }
+        }
+
+        /* ---- Login ----
+        .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+        .login-box {
+            background: var(--card); padding: 36px 32px; width: 360px;
+            border-radius: var(--radius); border: 1px solid var(--border);
+            animation: fadeIn 0.3s ease;
+        }
+        .login-box h1 { font-size: 1.15rem; margin-bottom: 22px; text-align: center; color: var(--primary); font-weight: 700; }
+        .login-error { color: var(--danger); font-size: 0.8rem; margin-top: 8px; min-height: 18px; }
+
+        /* ---- Form ---- */
+        .field { margin-bottom: 14px; }
+        .field label { display: block; margin-bottom: 4px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+        .field input, .field textarea, .field select {
+            width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+            border-radius: var(--radius); background: var(--bg); color: var(--text);
+            font-family: inherit; font-size: 0.9rem; outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        .field input:focus, .field textarea:focus, .field select:focus {
+            border-color: var(--primary); box-shadow: 0 0 0 3px rgba(61,139,95,0.08);
+        }
+        body.dark-mode .field input, body.dark-mode .field textarea, body.dark-mode .field select { background: #152018; }
+        textarea { min-height: 90px; resize: vertical; }
+        .field .hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+        /* ---- Buttons ---- */
+        .btn {
+            display: inline-block; padding: 8px 16px; border: 1px solid var(--border);
+            border-radius: var(--radius); cursor: pointer; font-size: 0.85rem; font-weight: 600;
+            background: var(--card); color: var(--text);
+            transition: all var(--transition);
+        }
+        .btn:hover { opacity: 0.8; }
+        .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+        .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
+        .btn-block { display: block; width: 100%; }
+
+        /* ---- Card ---- */
+        .card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+            animation: fadeIn 0.25s ease;
+        }
+        .card-header { font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* ---- Table ---- */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { text-align: left; padding: 9px 12px; background: var(--bg); font-weight: 700; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 0.8rem; }
+        td { padding: 8px 12px; border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(61,139,95,0.03); }
+        .actions { display: flex; gap: 4px; }
+
+        /* ---- Stats ---- */
+        .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .stat {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 18px;
+            transition: transform var(--transition), box-shadow var(--transition);
+        }
+        .stat:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .stat-val { font-size: 1.7rem; font-weight: 800; color: var(--primary); }
+        .stat-lbl { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+
+        /* ---- Modal ---- */
+        .modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.35); z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-box {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 24px;
+            max-width: 540px; width: 92%; max-height: 85vh; overflow-y: auto;
+            animation: scaleIn 0.2s ease;
+        }
+        .modal-box.wide { max-width: 700px; }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-title { font-weight: 700; margin-bottom: 16px; }
+        .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+        /* ---- Toast ---- */
+        #toast {
+            position: fixed; top: 16px; right: 16px; z-index: 9999;
+            padding: 10px 20px; border-radius: var(--radius);
+            color: #fff; font-size: 0.85rem; font-weight: 600;
+            transform: translateX(120%); transition: transform 0.3s ease;
+            max-width: 360px;
+        }
+        #toast.show { transform: translateX(0); }
+        #toast.ok { background: var(--primary); }
+        #toast.err { background: var(--danger); }
+
+        /* ---- Misc ---- */
+        .back { color: var(--primary); cursor: pointer; font-size: 0.85rem; margin-bottom: 12px; display: inline-block; transition: opacity var(--transition); }
+        .back:hover { opacity: 0.7; text-decoration: underline; }
+        .search { max-width: 260px; }
+        .mono { font-family: 'SF Mono', 'Consolas', monospace; font-size: 0.8rem; }
+        .empty { text-align: center; padding: 40px; color: var(--text-muted); }
+        .theme-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+        .theme-btn { cursor: pointer; font-size: 0.8rem; color: var(--text-muted); background: none; border: none; transition: color var(--transition); }
+        .theme-btn:hover { color: var(--primary); }
+    </style>
+</head>
+<body>
+    <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">&#9776;</button>
+
+    <!-- Login -->
+    <div id="view-login" class="login-wrap">
+        <div class="login-box">
+            <h1>后台管理系统</h1>
+            <div class="field"><label>用户名</label><input id="login-username" placeholder="请输入用户名" autocomplete="username"></div>
+            <div class="field"><label>密码</label><input type="password" id="login-password" placeholder="请输入密码" autocomplete="current-password"></div>
+            <button class="btn btn-primary btn-block" onclick="handleLogin()">登 录</button>
+            <div class="login-error" id="login-error"></div>
+        </div>
+    </div>
+
+    <!-- Force Password Change -->
+    <div id="view-force-change" class="login-wrap hidden">
+        <div class="login-box">
+            <h1>首次登录，请修改密码</h1>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">为保障安全，必须修改默认密码后才能继续使用。</p>
+            <div class="field"><label>当前密码</label><input type="password" id="fc-old-password"></div>
+            <div class="field"><label>新密码（至少6位）</label><input type="password" id="fc-new-password"></div>
+            <div class="field"><label>确认新密码</label><input type="password" id="fc-confirm-password"></div>
+            <button class="btn btn-primary btn-block" onclick="handleForceChange()">修改密码并登录</button>
+            <div class="login-error" id="fc-error"></div>
+        </div>
+    </div>
+
+    <!-- Layout (hidden on login views) -->
+    <div class="layout hidden" id="app-layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-logo">后台管理</div>
+            <a data-view="dashboard" onclick="showView('dashboard')">控制面板</a>
+            <a data-view="exams" onclick="showView('exams')">题库管理</a>
+            <a data-view="accounts" onclick="showView('accounts')">管理员账号</a>
+            <a data-view="password" onclick="showView('password')">修改密码</a>
+            <div class="sidebar-footer">
+                <div class="theme-row">
+                    <span id="sidebar-user"></span>
+                    <button class="theme-btn" onclick="toggleTheme()">明 / 暗</button>
+                </div>
+                <a onclick="logout()">退出登录</a>
+            </div>
+        </nav>
+
+        <div class="main" id="main-area">
+            <!-- Dashboard -->
+            <div id="view-dashboard" class="hidden">
+                <h2 style="margin-bottom:16px;font-size:1.1rem;font-weight:700;">控制面板</h2>
+                <div class="stats" id="stats-grid"></div>
+            </div>
+
+            <!-- Exams -->
+            <div id="view-exams" class="hidden">
+                <div class="card">
+                    <div class="card-header"><span>题库管理</span></div>
+                    <div class="field search"><input id="exam-search" placeholder="搜索题库..." oninput="filterExams()"></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>ID</th><th>科目</th><th>上传者</th><th>题目数</th><th>评分</th><th>创建时间</th><th>操作</th></tr></thead>
+                            <tbody id="exam-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div id="exam-empty" class="empty hidden">暂无题库</div>
+                </div>
+            </div>
+
+            <!-- Exam Detail -->
+            <div id="view-exam-detail" class="hidden">
+                <div class="back" onclick="showView('exams')">&larr; 返回题库列表</div>
+                <div class="card" id="exam-info-card"></div>
+                <div class="card">
+                    <div class="card-header"><span>题目列表</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>ID</th><th>题干</th><th>类型</th><th>答案</th><th>操作</th></tr></thead>
+                            <tbody id="question-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accounts -->
+            <div id="view-accounts" class="hidden">
+                <div class="card">
+                    <div class="card-header"><span>管理员账号</span><button class="btn btn-primary btn-sm" onclick="openCreateAccountModal()">新增</button></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>ID</th><th>用户名</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+                            <tbody id="accounts-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Change Password -->
+            <div id="view-password" class="hidden">
+                <div class="card" style="max-width:460px;">
+                    <div class="card-header"><span>修改密码</span></div>
+                    <div class="field"><label>当前密码</label><input type="password" id="cp-old"></div>
+                    <div class="field"><label>新密码（至少6位）</label><input type="password" id="cp-new"></div>
+                    <div class="field"><label>确认新密码</label><input type="password" id="cp-confirm"></div>
+                    <button class="btn btn-primary" onclick="handleChangePassword()">保存</button>
+                    <div class="login-error" id="cp-error"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="exam-edit-modal" class="modal hidden">
+        <div class="modal-box">
+            <div class="modal-title">编辑题库信息</div>
+            <div class="field"><label>科目名称</label><input id="edit-exam-name"></div>
+            <div class="field"><label>上传者</label><input id="edit-exam-uploader"></div>
+            <div class="modal-btns"><button class="btn" onclick="closeExamEditModal()">取消</button><button class="btn btn-primary" onclick="saveExamEdit()">保存</button></div>
+        </div>
+    </div>
+
+    <div id="question-edit-modal" class="modal hidden">
+        <div class="modal-box wide">
+            <div class="modal-title">编辑题目</div>
+            <div class="field"><label>题型</label><select id="edit-q-type" style="width:auto;min-width:120px;"><option value="单选题">单选题</option><option value="多选题">多选题</option><option value="判断题">判断题</option><option value="填空题">填空题</option><option value="简答题">简答题</option></select></div>
+            <div class="field"><label>题干</label><textarea id="edit-q-title" rows="4"></textarea></div>
+            <div class="field"><label>选项（JSON数组）</label><textarea class="mono" id="edit-q-options" rows="5" placeholder='[{"label":"A","content":"选项内容"}]'></textarea><div class="hint" id="options-status"></div></div>
+            <div class="field"><label>答案</label><input id="edit-q-answer" placeholder="如 A / 对 / 具体内容"></div>
+            <div class="field"><label>解析（可选）</label><textarea id="edit-q-explanation" rows="3"></textarea></div>
+            <div class="modal-btns"><button class="btn" onclick="closeQuestionEditModal()">取消</button><button class="btn btn-primary" onclick="saveQuestionEdit()">保存</button></div>
+        </div>
+    </div>
+
+    <div id="create-account-modal" class="modal hidden">
+        <div class="modal-box">
+            <div class="modal-title">新增管理员</div>
+            <div class="field"><label>用户名</label><input id="create-acc-username" placeholder="至少2个字符"></div>
+            <div class="field"><label>密码（至少6位）</label><input type="password" id="create-acc-password"></div>
+            <div class="field"><label>确认密码</label><input type="password" id="create-acc-confirm"></div>
+            <div class="modal-btns"><button class="btn" onclick="closeCreateAccountModal()">取消</button><button class="btn btn-primary" onclick="handleCreateAccount()">创建</button></div>
+        </div>
+    </div>
+
+    <div id="reset-password-modal" class="modal hidden">
+        <div class="modal-box">
+            <div class="modal-title" id="reset-pw-title">重置密码</div>
+            <div class="field"><label>新密码（至少6位）</label><input type="password" id="reset-pw-new"></div>
+            <div class="field"><label>确认新密码</label><input type="password" id="reset-pw-confirm"></div>
+            <div class="modal-btns"><button class="btn" onclick="closeResetPasswordModal()">取消</button><button class="btn btn-primary" onclick="handleResetPassword()">重置</button></div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+    let authToken = sessionStorage.getItem('admin_token');
+    let currentView = null, currentUserId = null;
+    let allExams = [];
+    let editingExamId = null, editingQuestionId = null, resettingAccountId = null;
+
+    // ---- Init ----
+    async function init() {
+        initTheme();
+        if (authToken) {
+            try {
+                const res = await api('GET', '/api/admin/me');
+                if (res.error) throw new Error(res.error);
+                currentUserId = res.id;
+                document.getElementById('sidebar-user').textContent = res.username;
+                if (res.must_change_password) { showView('force-change'); }
+                else { showView('dashboard'); }
+                return;
+            } catch (e) { sessionStorage.removeItem('admin_token'); authToken = null; }
+        }
+        showView('login');
+    }
+
+    // ---- Theme ----
+    function initTheme() {
+        const saved = localStorage.getItem('admin_dark_mode');
+        const prefers = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'true' || (!saved && prefers)) document.body.classList.add('dark-mode');
+    }
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('admin_dark_mode', document.body.classList.contains('dark-mode') ? 'true' : 'false');
+    }
+
+    // ---- Views ----
+    function showView(viewId) {
+        const isLogin = (viewId === 'login' || viewId === 'force-change');
+        document.getElementById('app-layout').classList.toggle('hidden', isLogin);
+        document.getElementById('view-login').classList.toggle('hidden', viewId !== 'login');
+        document.getElementById('view-force-change').classList.toggle('hidden', viewId !== 'force-change');
+        if (!isLogin) {
+            ['view-dashboard','view-exams','view-exam-detail','view-accounts','view-password'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            const el = document.getElementById('view-' + viewId);
+            el.classList.remove('hidden');
+            // Re-trigger animation
+            el.style.animation = 'none'; el.offsetHeight; el.style.animation = '';
+        }
+        currentView = viewId;
+        document.querySelectorAll('.sidebar a[data-view]').forEach(a => a.classList.toggle('active', a.dataset.view === viewId));
+        document.getElementById('sidebar').classList.remove('open');
+        if (viewId === 'dashboard') loadDashboard();
+        if (viewId === 'exams') loadExams();
+        if (viewId === 'accounts') loadAccounts();
+    }
+
+    // ---- Toast ----
+    function toast(msg, type) {
+        const el = document.getElementById('toast');
+        el.textContent = msg; el.className = type === 'error' ? 'err' : 'ok';
+        el.classList.add('show');
+        clearTimeout(el._t);
+        el._t = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    // ---- API ----
+    async function api(method, path, body) {
+        const opts = { method, headers: { 'Authorization': 'Bearer ' + authToken } };
+        if (body !== undefined && method !== 'GET') {
+            opts.headers['Content-Type'] = 'application/json';
+            opts.body = JSON.stringify(body);
+        }
+        const res = await fetch(path, opts);
+        const data = await res.json();
+        if (res.status === 401) {
+            sessionStorage.removeItem('admin_token'); authToken = null;
+            showView('login'); toast('会话已过期，请重新登录', 'error');
+        }
+        return data;
+    }
+
+    // ---- Login ----
+    async function handleLogin() {
+        const u = document.getElementById('login-username').value.trim();
+        const p = document.getElementById('login-password').value;
+        const err = document.getElementById('login-error');
+        if (!u || !p) { err.textContent = '请输入用户名和密码'; return; }
+        err.textContent = '';
+        try {
+            const res = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) });
+            const data = await res.json();
+            if (data.error) { err.textContent = data.error; return; }
+            authToken = data.token; sessionStorage.setItem('admin_token', data.token);
+            if (data.must_change_password) { document.getElementById('fc-old-password').value = p; showView('force-change'); }
+            else { showView('dashboard'); }
+        } catch (e) { err.textContent = '网络错误，请重试'; }
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && currentView === 'login') handleLogin();
+        if (e.key === 'Enter' && currentView === 'force-change') handleForceChange();
+    });
+
+    // ---- Force Change ----
+    async function handleForceChange() {
+        const o = document.getElementById('fc-old-password').value;
+        const n = document.getElementById('fc-new-password').value;
+        const c = document.getElementById('fc-confirm-password').value;
+        const err = document.getElementById('fc-error');
+        if (!o || !n || !c) { err.textContent = '请填写所有字段'; return; }
+        if (n.length < 6) { err.textContent = '新密码至少6位'; return; }
+        if (n !== c) { err.textContent = '两次密码不一致'; return; }
+        err.textContent = '';
+        const r = await api('POST', '/api/admin/change-password', { old_password: o, new_password: n });
+        if (r.error) { err.textContent = r.error; return; }
+        toast('密码修改成功'); showView('dashboard');
+    }
+
+    async function logout() {
+        try { await api('POST', '/api/admin/logout'); } catch (e) {}
+        sessionStorage.removeItem('admin_token'); authToken = null; showView('login');
+    }
+
+    // ---- Dashboard ----
+    async function loadDashboard() {
+        const [ex, ac] = await Promise.all([api('GET', '/api/admin/exams'), api('GET', '/api/admin/accounts')]);
+        const exams = ex.data || []; const accounts = ac.data || [];
+        const qs = exams.reduce((s, e) => s + (e.question_count || 0), 0);
+        const avg = exams.length ? (exams.reduce((s, e) => s + (parseFloat(e.rate) || 0), 0) / exams.length).toFixed(1) : '5.0';
+        document.getElementById('stats-grid').innerHTML = [
+            ['题库总数', exams.length], ['题目总数', qs], ['管理员', accounts.length], ['平均评分', avg]
+        ].map(([l, v]) => `<div class="stat"><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div>`).join('');
+    }
+
+    // ---- Exams ----
+    async function loadExams() { const r = await api('GET', '/api/admin/exams'); allExams = r.data || []; renderExams(allExams); }
+    function renderExams(list) {
+        const tbody = document.getElementById('exam-table-body');
+        const empty = document.getElementById('exam-empty');
+        if (!list.length) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+        empty.classList.add('hidden');
+        tbody.innerHTML = list.map(e => `<tr>
+            <td>${e.id}</td><td><strong>${esc(e.subject_name)}</strong></td><td>${esc(e.uploader_name)}</td>
+            <td>${e.question_count}</td><td>${parseFloat(e.rate).toFixed(1)} (${e.ratenums})</td><td>${fmtDate(e.created_at)}</td>
+            <td class="actions">
+                <button class="btn btn-sm" onclick="openExamDetail(${e.id})">查看</button>
+                <button class="btn btn-sm" onclick="openExamEditModal(${e.id},'${escJs(e.subject_name)}','${escJs(e.uploader_name)}')">编辑</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteExam(${e.id})">删除</button>
+            </td></tr>`).join('');
+    }
+    function filterExams() {
+        const q = document.getElementById('exam-search').value.toLowerCase();
+        renderExams(allExams.filter(e => e.subject_name.toLowerCase().includes(q) || e.uploader_name.toLowerCase().includes(q)));
+    }
+
+    // ---- Exam Detail ----
+    let currentExamId = null;
+    async function openExamDetail(id) {
+        currentExamId = id; showView('exam-detail');
+        const [ex, qs] = await Promise.all([api('GET', '/api/admin/exams/' + id), api('GET', '/api/admin/exams/' + id + '/questions')]);
+        const exam = ex.data; const questions = qs.data || [];
+        document.getElementById('exam-info-card').innerHTML = `<div class="card-header">
+            <span>${esc(exam.subject_name)}</span>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-sm" onclick="openExamEditModal(${exam.id},'${escJs(exam.subject_name)}','${escJs(exam.uploader_name)}')">编辑</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteExam(${exam.id})">删除题库</button>
+            </div></div>
+            <div style="display:flex;gap:24px;font-size:0.85rem;color:var(--text-muted);">
+                <span>上传者：${esc(exam.uploader_name)}</span><span>评分：${parseFloat(exam.rate).toFixed(1)} (${exam.ratenums}人)</span>
+                <span>题目：${questions.length} 题</span><span>创建：${fmtDate(exam.created_at)}</span></div>`;
+        const tbody = document.getElementById('question-table-body');
+        tbody.innerHTML = questions.length ? questions.map(q => `<tr>
+            <td>${q.id}</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(q.title)}">${esc(q.title)}</td>
+            <td>${esc(q.type||'')}</td><td>${esc(String(q.answer||''))}</td>
+            <td class="actions"><button class="btn btn-sm" onclick="openQuestionEditModal(${q.id})">编辑</button><button class="btn btn-danger btn-sm" onclick="deleteQuestion(${q.id})">删除</button></td>
+        </tr>`).join('') : '<tr><td colspan="5" class="empty">暂无题目</td></tr>';
+    }
+
+    // ---- Exam Edit Modal ----
+    function openExamEditModal(id, name, uploader) {
+        editingExamId = id; document.getElementById('edit-exam-name').value = name;
+        document.getElementById('edit-exam-uploader').value = uploader;
+        document.getElementById('exam-edit-modal').classList.remove('hidden');
+    }
+    function closeExamEditModal() { document.getElementById('exam-edit-modal').classList.add('hidden'); }
+    async function saveExamEdit() {
+        const n = document.getElementById('edit-exam-name').value.trim();
+        const u = document.getElementById('edit-exam-uploader').value.trim();
+        if (!n || !u) { toast('请填写完整', 'error'); return; }
+        const r = await api('PUT', '/api/admin/exams/' + editingExamId, { subject_name: n, uploader_name: u });
+        if (r.error) { toast(r.error, 'error'); return; }
+        toast('已更新'); closeExamEditModal();
+        if (currentView === 'exam-detail') openExamDetail(currentExamId); else loadExams();
+    }
+    async function deleteExam(id) {
+        if (!confirm('确定删除该题库及其所有题目？此操作不可恢复！')) return;
+        const r = await api('DELETE', '/api/admin/exams/' + id);
+        if (r.error) { toast(r.error, 'error'); return; }
+        toast('已删除'); if (currentView === 'exam-detail') showView('exams'); else loadExams();
+    }
+
+    // ---- Question Edit Modal ----
+    async function openQuestionEditModal(qId) {
+        editingQuestionId = qId;
+        const r = await api('GET', '/api/admin/questions/' + qId);
+        if (r.error) { toast(r.error, 'error'); return; }
+        const q = r.data;
+        document.getElementById('edit-q-type').value = q.type || '单选题';
+        document.getElementById('edit-q-title').value = q.title || '';
+        document.getElementById('edit-q-options').value = JSON.stringify(q.options || [], null, 2);
+        document.getElementById('edit-q-answer').value = q.answer || '';
+        document.getElementById('edit-q-explanation').value = q.explanation || '';
+        document.getElementById('options-status').textContent = '';
+        document.getElementById('question-edit-modal').classList.remove('hidden');
+    }
+    function closeQuestionEditModal() { document.getElementById('question-edit-modal').classList.add('hidden'); }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const opt = document.getElementById('edit-q-options');
+        if (opt) opt.addEventListener('blur', function() {
+            const st = document.getElementById('options-status');
+            try { const v = this.value.trim(); if (!v) { st.textContent = ''; return; }
+                const p = JSON.parse(v); if (!Array.isArray(p)) throw new Error();
+                st.textContent = '格式正确'; st.style.color = 'var(--primary)'; }
+            catch (e) { st.textContent = 'JSON格式错误'; st.style.color = 'var(--danger)'; }
+        });
+    });
+
+    async function saveQuestionEdit() {
+        const title = document.getElementById('edit-q-title').value.trim();
+        const optsRaw = document.getElementById('edit-q-options').value.trim();
+        const answer = document.getElementById('edit-q-answer').value.trim();
+        const expl = document.getElementById('edit-q-explanation').value.trim();
+        const type = document.getElementById('edit-q-type').value;
+        if (!title) { toast('题干不能为空', 'error'); return; }
+        if (!answer) { toast('答案不能为空', 'error'); return; }
+        let opts;
+        if (optsRaw) { try { opts = JSON.parse(optsRaw); if (!Array.isArray(opts)) throw new Error(); } catch (e) { toast('选项JSON格式错误', 'error'); return; } }
+        const r = await api('PUT', '/api/admin/questions/' + editingQuestionId, { title, options: opts || [], answer, explanation: expl, type });
+        if (r.error) { toast(r.error, 'error'); return; }
+        toast('已更新'); closeQuestionEditModal();
+        if (currentView === 'exam-detail') openExamDetail(currentExamId);
+    }
+    async function deleteQuestion(id) {
+        if (!confirm('确定删除该题目？')) return;
+        const r = await api('DELETE', '/api/admin/questions/' + id);
+        if (r.error) { toast(r.error, 'error'); return; }
+        toast('已删除'); if (currentView === 'exam-detail') openExamDetail(currentExamId);
+    }
+
+    // ---- Accounts ----
+    async function loadAccounts() {
+        const r = await api('GET', '/api/admin/accounts'); const list = r.data || [];
+        document.getElementById('accounts-table-body').innerHTML = list.map(a => `<tr>
+            <td>${a.id}</td><td><strong>${esc(a.username)}</strong></td>
+            <td>${a.must_change_password ? '需改密' : '正常'}</td><td>${fmtDate(a.created_at)}</td>
+            <td class="actions">${a.id !== currentUserId
+                ? `<button class="btn btn-sm" onclick="openResetPasswordModal(${a.id},'${escJs(a.username)}')">重置密码</button><button class="btn btn-danger btn-sm" onclick="deleteAccount(${a.id})">删除</button>`
+                : '<span style="color:var(--text-muted);font-size:0.8rem;">当前</span>'}</td></tr>`).join('');
+    }
+
+    function openCreateAccountModal() {
+        document.getElementById('create-acc-username').value = '';
+        document.getElementById('create-acc-password').value = '';
+        document.getElementById('create-acc-confirm').value = '';
+        document.getElementById('create-account-modal').classList.remove('hidden');
+    }
+    function closeCreateAccountModal() { document.getElementById('create-account-modal').classList.add('hidden'); }
+    async function handleCreateAccount() {
+        const u = document.getElementById('create-acc-username').value.trim();
+        const p = document.getElementById('create-acc-password').value;
+        const c = document.getElementById('create-acc-confirm').value;
+        if (!u || !p) { toast('请填写完整', 'error'); return; }
+        if (u.length < 2) { toast('用户名至少2个字符', 'error'); return; }
+        if (p.length < 6) { toast('密码至少6位', 'error'); return; }
+        if (p !== c) { toast('两次密码不一致', 'error'); return; }
+        const r = await api('POST', '/api/admin/accounts', { username: u, password: p });
+        if (r.error) { toast(r.error, 'error'); return; }
+        toast('已创建'); closeCreateAccountModal(); loadAccounts();
+    }
+    async function deleteAccount(id) {
+        if (!confirm('确定删除该管理员？')) return;
+        const r = await api('DELETE', '/api/admin/accounts/' + id);
+        if (r.error) { toast(r.error, 'error'); return; }
+        toast('已删除'); loadAccounts();
+    }
+
+    function openResetPasswordModal(id, username) {
+        resettingAccountId = id;
+        document.getElementById('reset-pw-new').value = '';
+        document.getElementById('reset-pw-confirm').value = '';
+        document.getElementById('reset-pw-title').textContent = '重置密码 - ' + username;
+        document.getElementById('reset-password-modal').classList.remove('hidden');
+    }
+    function closeResetPasswordModal() { document.getElementById('reset-password-modal').classList.add('hidden'); }
+    async function handleResetPassword() {
+        const p = document.getElementById('reset-pw-new').value;
+        const c = document.getElementById('reset-pw-confirm').value;
+        if (!p || p.length < 6) { toast('新密码至少6位', 'error'); return; }
+        if (p !== c) { toast('两次密码不一致', 'error'); return; }
+        const r = await api('POST', '/api/admin/accounts/' + resettingAccountId + '/reset-password', { new_password: p });
+        if (r.error) { toast(r.error, 'error'); return; }
+        toast('密码已重置'); closeResetPasswordModal(); loadAccounts();
+    }
+
+    // ---- Change Password ----
+    async function handleChangePassword() {
+        const o = document.getElementById('cp-old').value;
+        const n = document.getElementById('cp-new').value;
+        const c = document.getElementById('cp-confirm').value;
+        const err = document.getElementById('cp-error');
+        if (!o || !n || !c) { err.textContent = '请填写所有字段'; return; }
+        if (n.length < 6) { err.textContent = '新密码至少6位'; return; }
+        if (n !== c) { err.textContent = '两次密码不一致'; return; }
+        err.textContent = '';
+        const r = await api('POST', '/api/admin/change-password', { old_password: o, new_password: n });
+        if (r.error) { err.textContent = r.error; return; }
+        toast('密码修改成功');
+        document.getElementById('cp-old').value = document.getElementById('cp-new').value = document.getElementById('cp-confirm').value = '';
+    }
+
+    // ---- Utils ----
+    function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+    function escJs(s) { if (!s) return ''; return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n'); }
+    function fmtDate(d) { if (!d) return ''; const t = new Date(d); const p = n => String(n).padStart(2, '0'); return `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())} ${p(t.getHours())}:${p(t.getMinutes())}`; }
+
+    document.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.classList.add('hidden'); });
+
+    init();
+    </script>
+</body>
+</html>
